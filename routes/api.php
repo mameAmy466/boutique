@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
@@ -30,6 +31,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/stocks/{batch}/adjust', [StockController::class, 'adjust']);
     Route::post('/stocks/{batch}/shrinkage', [StockController::class, 'shrinkage']);
     Route::get('/stocks/movements', [StockController::class, 'movements']);
+
+    Route::get('/cash-registers', [CashRegisterController::class, 'index']);
+    Route::post('/cash-registers', [CashRegisterController::class, 'store']);
 
     Route::get('/cash-sessions', [CashSessionController::class, 'index']);
     Route::post('/cash-sessions/open', [CashSessionController::class, 'open']);
