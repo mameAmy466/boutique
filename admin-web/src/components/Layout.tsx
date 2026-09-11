@@ -32,6 +32,11 @@ export function ProtectedLayout() {
         <NavLink to="/shops" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           Boutiques
         </NavLink>
+        {(user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique') && (
+          <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            Utilisateurs
+          </NavLink>
+        )}
         <NavLink to="/products" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           Produits
         </NavLink>
