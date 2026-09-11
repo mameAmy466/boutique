@@ -3,6 +3,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { Product, ProductBatch, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { BatchCodeModal } from '../components/BatchCodeModal';
 import { formatDate, formatMoney } from '../lib/format';
 
 function emptyForm(defaultShopId: string) {
@@ -28,6 +29,7 @@ export function StocksPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [showReceive, setShowReceive] = useState(false);
+  const [codeBatch, setCodeBatch] = useState<ProductBatch | null>(null);
   const [form, setForm] = useState(() => emptyForm(user?.shop_id ? String(user.shop_id) : ''));
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -102,17 +104,18 @@ export function StocksPage() {
               <th>Prix minimum</th>
               <th>Disponible</th>
               <th>Reçu le</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 7 : 6}>Chargement…</td>
+                <td colSpan={isSuperAdmin ? 8 : 7}>Chargement…</td>
               </tr>
             )}
             {!loading && batches.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 7 : 6}>Aucun lot en stock pour le moment.</td>
+                <td colSpan={isSuperAdmin ? 8 : 7}>Aucun lot en stock pour le moment.</td>
               </tr>
             )}
             {batches.map((b) => (
@@ -128,6 +131,11 @@ export function StocksPage() {
                   </span>
                 </td>
                 <td>{formatDate(b.received_at)}</td>
+                <td>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setCodeBatch(b)}>
+                    🏷️ Code
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -233,6 +241,8 @@ export function StocksPage() {
           </form>
         </Modal>
       )}
+
+      {codeBatch && <BatchCodeModal batch={codeBatch} onClose={() => setCodeBatch(null)} />}
     </>
   );
 }

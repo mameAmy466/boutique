@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { api, ApiError } from '../api/client';
 import type { CashRegister, CashSession, PaymentMethod, ProductBatch, Sale, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { formatDate, formatMoney } from '../lib/format';
+
+const BarcodeScannerModal = lazy(() =>
+  import('../components/BarcodeScannerModal').then((m) => ({ default: m.BarcodeScannerModal })),
+);
 
 const STATUS_BADGE: Record<Sale['status'], string> = {
   completed: 'ok',
@@ -56,6 +60,11 @@ export function SalesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [scanInput, setScanInput] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+
   function loadSales() {
     setLoading(true);
     api
@@ -103,6 +112,47 @@ export function SalesPage() {
 
   function removeLine(index: number) {
     setLines((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function applyScannedCode(rawCode: string) {
+    const code = rawCode.trim();
+    if (!code) return;
+
+    const batch = batches.find((b) => b.batch_code.toLowerCase() === code.toLowerCase());
+    if (!batch) {
+      setScanError(`Aucun lot trouvé pour le code « ${code} » dans cette boutique.`);
+      return;
+    }
+    if (batch.quantity_available === 0) {
+      setScanError(`${batch.product?.name ?? batch.batch_code} : rupture de stock sur ce lot.`);
+      return;
+    }
+
+    setScanError(null);
+    setLines((prev) => {
+      const existingIndex = prev.findIndex((l) => l.product_batch_id === String(batch.id));
+      if (existingIndex !== -1) {
+        return prev.map((l, i) =>
+          i === existingIndex ? { ...l, quantity: String(Number(l.quantity || 0) + 1) } : l,
+        );
+      }
+      const emptyIndex = prev.findIndex((l) => !l.product_batch_id);
+      const filledLine: Line = { product_batch_id: String(batch.id), quantity: '1', unit_price: batch.min_price };
+      if (emptyIndex !== -1) {
+        return prev.map((l, i) => (i === emptyIndex ? filledLine : l));
+      }
+      return [...prev, filledLine];
+    });
+
+    setScanInput('');
+    scanInputRef.current?.focus();
+  }
+
+  function handleScanKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyScannedCode(scanInput);
+    }
   }
 
   async function handleOpenSession() {
@@ -296,6 +346,22 @@ export function SalesPage() {
               </div>
 
               <div className="section-title" style={{ marginTop: 0 }}>Articles</div>
+
+              <div className="scan-bar">
+                <input
+                  ref={scanInputRef}
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  onKeyDown={handleScanKeyDown}
+                  placeholder="Scanner (douchette) ou saisir le code du lot, puis Entrée…"
+                  autoFocus
+                />
+                <button type="button" className="btn btn-sm" onClick={() => setShowCamera(true)}>
+                  📷 Scanner
+                </button>
+              </div>
+              {scanError && <div className="alert error">{scanError}</div>}
+
               {lines.map((line, i) => {
                 const batch = batches.find((b) => b.id === Number(line.product_batch_id));
                 return (
@@ -366,6 +432,18 @@ export function SalesPage() {
             </form>
           )}
         </Modal>
+      )}
+
+      {showCamera && (
+        <Suspense fallback={null}>
+          <BarcodeScannerModal
+            onDetected={(code) => {
+              setShowCamera(false);
+              applyScannedCode(code);
+            }}
+            onClose={() => setShowCamera(false)}
+          />
+        </Suspense>
       )}
     </>
   );
