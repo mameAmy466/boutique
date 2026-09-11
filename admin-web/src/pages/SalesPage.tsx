@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client';
 import type { CashRegister, CashSession, PaymentMethod, ProductBatch, Sale, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { InvoiceReceipt } from '../components/InvoiceReceipt';
 import { formatDate, formatMoney } from '../lib/format';
 
 const BarcodeScannerModal = lazy(() =>
@@ -64,6 +65,8 @@ export function SalesPage() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
+
+  const [completedSale, setCompletedSale] = useState<Sale | null>(null);
 
   function loadSales() {
     setLoading(true);
@@ -192,7 +195,7 @@ export function SalesPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      await api.post('/sales', {
+      const created = await api.post<Sale>('/sales', {
         shop_id: Number(shopId),
         cash_session_id: openSession.id,
         payment_method: paymentMethod,
@@ -205,15 +208,27 @@ export function SalesPage() {
             unit_price: Number(l.unit_price),
           })),
       });
-      setShowNew(false);
-      setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
-      setCustomerName('');
+      const detailed = await api.get<Sale>(`/sales/${created.id}`);
+      setCompletedSale(detailed);
       loadSales();
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Erreur inattendue.');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function startNextSale() {
+    setCompletedSale(null);
+    setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
+    setCustomerName('');
+  }
+
+  function closeSaleModal() {
+    setShowNew(false);
+    setCompletedSale(null);
+    setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
+    setCustomerName('');
   }
 
   return (
@@ -274,7 +289,32 @@ export function SalesPage() {
       </div>
 
       {showNew && (
-        <Modal title="Nouvelle vente" onClose={() => setShowNew(false)}>
+        <Modal title={completedSale ? 'Vente enregistrée' : 'Nouvelle vente'} onClose={closeSaleModal}>
+          {completedSale ? (
+            <>
+              <div className="alert success" style={{ marginBottom: 16 }}>
+                Vente {completedSale.sale_number} validée — facture {completedSale.invoice?.invoice_number}.
+              </div>
+
+              <InvoiceReceipt
+                sale={completedSale}
+                shop={shops.find((s) => s.id === completedSale.shop_id) ?? user?.shop ?? null}
+              />
+
+              <div className="form-actions" style={{ marginTop: 20, justifyContent: 'center' }}>
+                <button type="button" className="btn btn-ghost" onClick={closeSaleModal}>
+                  Ne pas imprimer
+                </button>
+                <button type="button" className="btn" onClick={() => window.print()}>
+                  🖨️ Imprimer la facture
+                </button>
+                <button type="button" className="btn btn-primary" onClick={startNextSale}>
+                  Nouvelle vente
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
           {formError && <div className="alert error">{formError}</div>}
 
           <div className="field" style={{ marginBottom: 14 }}>
@@ -422,7 +462,7 @@ export function SalesPage() {
               </div>
 
               <div className="form-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowNew(false)}>
+                <button type="button" className="btn btn-ghost" onClick={closeSaleModal}>
                   Annuler
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
@@ -430,6 +470,8 @@ export function SalesPage() {
                 </button>
               </div>
             </form>
+          )}
+            </>
           )}
         </Modal>
       )}
