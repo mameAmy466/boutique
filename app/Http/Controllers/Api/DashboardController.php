@@ -34,6 +34,9 @@ class DashboardController extends Controller
                 'open' => CashSession::where('status', 'open')->count(),
             ],
             'alerts' => $this->alertCounts(),
+            'sales_trend' => $this->salesTrend(),
+            'top_products' => $this->topProducts(),
+            'shops_comparison' => $this->shopsComparison(),
         ]);
     }
 
@@ -51,6 +54,8 @@ class DashboardController extends Controller
                     ->where('status', 'open')->count(),
             ],
             'alerts' => $this->alertCounts($shop->id),
+            'sales_trend' => $this->salesTrend($shop->id),
+            'top_products' => $this->topProducts($shop->id),
         ]);
     }
 
@@ -112,5 +117,96 @@ class DashboardController extends Controller
         return [
             'low_stock' => $lowStock,
         ];
+    }
+
+    /**
+     * Daily revenue for the last 14 days (including days with no sales).
+     */
+    private function salesTrend(?int $shopId = null): array
+    {
+        $from = now()->subDays(13)->startOfDay();
+
+        $rows = Sale::query()
+            ->where('status', Sale::STATUS_COMPLETED)
+            ->when($shopId, fn ($q) => $q->where('shop_id', $shopId))
+            ->where('created_at', '>=', $from)
+            ->select(DB::raw('DATE(created_at) as day'), DB::raw('SUM(total) as total'))
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $trend = [];
+        for ($i = 0; $i < 14; $i++) {
+            $date = $from->copy()->addDays($i)->toDateString();
+            $trend[] = [
+                'date' => $date,
+                'total' => (float) ($rows[$date] ?? 0),
+            ];
+        }
+
+        return $trend;
+    }
+
+    /**
+     * Top 5 products by revenue (completed sales only).
+     */
+    private function topProducts(?int $shopId = null): array
+    {
+        return SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('product_batches', 'product_batches.id', '=', 'sale_items.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
+            ->where('sales.status', Sale::STATUS_COMPLETED)
+            ->when($shopId, fn ($q) => $q->where('sales.shop_id', $shopId))
+            ->select(
+                'products.id as product_id',
+                'products.name',
+                DB::raw('SUM(sale_items.quantity) as quantity'),
+                DB::raw('SUM(sale_items.line_total) as revenue'),
+            )
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('revenue')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'product_id' => $row->product_id,
+                'name' => $row->name,
+                'quantity' => (int) $row->quantity,
+                'revenue' => (float) $row->revenue,
+            ])
+            ->all();
+    }
+
+    /**
+     * This month's revenue and profit per active shop (super admin only).
+     */
+    private function shopsComparison(): array
+    {
+        $from = now()->startOfMonth();
+
+        $revenueByShop = Sale::query()
+            ->where('status', Sale::STATUS_COMPLETED)
+            ->where('created_at', '>=', $from)
+            ->groupBy('shop_id')
+            ->select('shop_id', DB::raw('SUM(total) as revenue'))
+            ->pluck('revenue', 'shop_id');
+
+        $profitByShop = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sales.status', Sale::STATUS_COMPLETED)
+            ->where('sales.created_at', '>=', $from)
+            ->groupBy('sales.shop_id')
+            ->select('sales.shop_id', DB::raw('SUM(sale_items.line_total - (sale_items.cost_price * sale_items.quantity)) as profit'))
+            ->pluck('profit', 'shop_id');
+
+        return Shop::query()
+            ->where('status', 'active')
+            ->get(['id', 'name'])
+            ->map(fn ($shop) => [
+                'shop_id' => $shop->id,
+                'name' => $shop->name,
+                'revenue' => (float) ($revenueByShop[$shop->id] ?? 0),
+                'profit' => (float) ($profitByShop[$shop->id] ?? 0),
+            ])
+            ->all();
     }
 }

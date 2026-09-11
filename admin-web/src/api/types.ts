@@ -148,6 +148,25 @@ export interface Paginated<T> {
   total: number;
 }
 
+export interface SalesTrendPoint {
+  date: string;
+  total: number;
+}
+
+export interface TopProduct {
+  product_id: number;
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface ShopComparisonRow {
+  shop_id: number;
+  name: string;
+  revenue: number;
+  profit: number;
+}
+
 export interface DashboardFigures {
   revenue: { today: number; this_week: number; this_month: number; this_year: number };
   gross_profit: number;
@@ -156,6 +175,9 @@ export interface DashboardFigures {
   cash_sessions: { open: number };
   alerts: { low_stock: number };
   shop?: { id: number; name: string; code: string };
+  sales_trend: SalesTrendPoint[];
+  top_products: TopProduct[];
+  shops_comparison?: ShopComparisonRow[];
 }
 
 export interface ApiErrorBody {

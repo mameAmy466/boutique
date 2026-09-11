@@ -3,6 +3,9 @@ import { api, ApiError } from '../api/client';
 import type { DashboardFigures } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney } from '../lib/format';
+import { SalesTrendChart } from '../components/charts/SalesTrendChart';
+import { TopProductsChart } from '../components/charts/TopProductsChart';
+import { ShopComparisonChart } from '../components/charts/ShopComparisonChart';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -97,6 +100,24 @@ export function DashboardPage() {
               <div className="value">{data.alerts.low_stock}</div>
             </div>
           </div>
+
+          <div className="chart-grid-2">
+            <div className="chart-card">
+              <h3>Ventes des 14 derniers jours</h3>
+              <SalesTrendChart data={data.sales_trend} />
+            </div>
+            <div className="chart-card">
+              <h3>Top produits (chiffre d'affaires)</h3>
+              <TopProductsChart data={data.top_products} />
+            </div>
+          </div>
+
+          {data.shops_comparison && (
+            <div className="chart-card" style={{ marginBottom: 24 }}>
+              <h3>Comparaison des boutiques — mois en cours</h3>
+              <ShopComparisonChart data={data.shops_comparison} />
+            </div>
+          )}
         </>
       )}
     </>
