@@ -245,7 +245,7 @@ export function SalesPage() {
 
       {error && <div className="alert error">{error}</div>}
 
-      <div className="table-wrap table-scroll">
+      <div className="table-wrap table-scroll cards-sm">
         <table>
           <thead>
             <tr>
@@ -272,16 +272,18 @@ export function SalesPage() {
             )}
             {sales.map((s) => (
               <tr key={s.id}>
-                <td className="mono">{s.sale_number}</td>
-                {isSuperAdmin && <td>{shops.find((sh) => sh.id === s.shop_id)?.name ?? `#${s.shop_id}`}</td>}
-                <td>{s.user?.name ?? `#${s.user_id}`}</td>
-                <td>{PAYMENT_LABEL[s.payment_method]}</td>
-                <td className="num">{formatMoney(s.total)}</td>
-                <td>
+                <td className="mono" data-label="N° vente">{s.sale_number}</td>
+                {isSuperAdmin && (
+                  <td data-label="Boutique">{shops.find((sh) => sh.id === s.shop_id)?.name ?? `#${s.shop_id}`}</td>
+                )}
+                <td data-label="Vendeur">{s.user?.name ?? `#${s.user_id}`}</td>
+                <td data-label="Paiement">{PAYMENT_LABEL[s.payment_method]}</td>
+                <td className="num" data-label="Total">{formatMoney(s.total)}</td>
+                <td data-label="Statut">
                   <span className={`badge ${STATUS_BADGE[s.status]}`}>{STATUS_LABEL[s.status]}</span>
                 </td>
-                <td className="mono">{s.invoice?.invoice_number ?? '—'}</td>
-                <td>{formatDate(s.created_at)}</td>
+                <td className="mono" data-label="Facture">{s.invoice?.invoice_number ?? '—'}</td>
+                <td data-label="Date">{formatDate(s.created_at)}</td>
               </tr>
             ))}
           </tbody>

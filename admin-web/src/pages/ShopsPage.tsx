@@ -95,7 +95,7 @@ export function ShopsPage() {
 
       {error && <div className="alert error">{error}</div>}
 
-      <div className="table-wrap table-scroll">
+      <div className="table-wrap table-scroll cards-sm">
         <table>
           <thead>
             <tr>
@@ -119,11 +119,11 @@ export function ShopsPage() {
             )}
             {shops.map((shop) => (
               <tr key={shop.id}>
-                <td className="mono">{shop.code}</td>
-                <td>{shop.name}</td>
-                <td>{shop.manager_name ?? '—'}</td>
-                <td className="num">{formatMoney(shop.monthly_budget)}</td>
-                <td>
+                <td className="mono" data-label="Code">{shop.code}</td>
+                <td data-label="Nom">{shop.name}</td>
+                <td data-label="Responsable">{shop.manager_name ?? '—'}</td>
+                <td className="num" data-label="Budget mensuel">{formatMoney(shop.monthly_budget)}</td>
+                <td data-label="Statut">
                   <span className={`badge ${STATUS_BADGE[shop.status]}`}>{STATUS_LABEL[shop.status]}</span>
                 </td>
               </tr>

@@ -113,7 +113,7 @@ export function ProductsPage() {
 
       {error && <div className="alert error">{error}</div>}
 
-      <div className="table-wrap table-scroll">
+      <div className="table-wrap table-scroll cards-sm">
         <table>
           <thead>
             <tr>
@@ -139,13 +139,13 @@ export function ProductsPage() {
             )}
             {products.map((p) => (
               <tr key={p.id}>
-                <td className="mono">{p.reference}</td>
-                <td>{p.name}</td>
-                <td>{p.brand ?? '—'}</td>
-                <td>{p.category?.name ?? categoryName(p.category_id)}</td>
-                <td>{p.supplier?.name ?? supplierName(p.supplier_id)}</td>
-                <td>{p.unit}</td>
-                <td className="num">{p.min_stock}</td>
+                <td className="mono" data-label="Référence">{p.reference}</td>
+                <td data-label="Nom">{p.name}</td>
+                <td data-label="Marque">{p.brand ?? '—'}</td>
+                <td data-label="Catégorie">{p.category?.name ?? categoryName(p.category_id)}</td>
+                <td data-label="Fournisseur">{p.supplier?.name ?? supplierName(p.supplier_id)}</td>
+                <td data-label="Unité">{p.unit}</td>
+                <td className="num" data-label="Seuil min.">{p.min_stock}</td>
               </tr>
             ))}
           </tbody>

@@ -101,7 +101,7 @@ export function UsersPage() {
 
       {error && <div className="alert error">{error}</div>}
 
-      <div className="table-wrap table-scroll">
+      <div className="table-wrap table-scroll cards-sm">
         <table>
           <thead>
             <tr>
@@ -126,16 +126,16 @@ export function UsersPage() {
             )}
             {users.map((u) => (
               <tr key={u.id}>
-                <td>{u.name}</td>
-                <td>{u.email}</td>
-                <td>{u.role ? ROLE_LABEL[u.role.slug] ?? u.role.name : '—'}</td>
-                <td>{u.shop?.name ?? '—'}</td>
-                <td>
+                <td data-label="Nom">{u.name}</td>
+                <td data-label="E-mail">{u.email}</td>
+                <td data-label="Rôle">{u.role ? ROLE_LABEL[u.role.slug] ?? u.role.name : '—'}</td>
+                <td data-label="Boutique">{u.shop?.name ?? '—'}</td>
+                <td data-label="Statut">
                   <span className={`badge ${u.is_active ? 'ok' : 'neutral'}`}>
                     {u.is_active ? 'Actif' : 'Désactivé'}
                   </span>
                 </td>
-                <td>
+                <td data-label="">
                   {u.id !== me?.id && (
                     <button className="btn btn-sm btn-ghost" onClick={() => toggleActive(u)}>
                       {u.is_active ? 'Désactiver' : 'Réactiver'}

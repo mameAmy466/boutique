@@ -93,7 +93,7 @@ export function StocksPage() {
 
       {error && <div className="alert error">{error}</div>}
 
-      <div className="table-wrap table-scroll">
+      <div className="table-wrap table-scroll cards-sm">
         <table>
           <thead>
             <tr>
@@ -120,18 +120,18 @@ export function StocksPage() {
             )}
             {batches.map((b) => (
               <tr key={b.id}>
-                <td className="mono">{b.batch_code}</td>
-                <td>{b.product?.name ?? `#${b.product_id}`}</td>
-                {isSuperAdmin && <td>{b.shop?.name ?? `#${b.shop_id}`}</td>}
-                <td className="num">{formatMoney(b.cost_price)}</td>
-                <td className="num">{formatMoney(b.min_price)}</td>
-                <td>
+                <td className="mono" data-label="Code lot">{b.batch_code}</td>
+                <td data-label="Produit">{b.product?.name ?? `#${b.product_id}`}</td>
+                {isSuperAdmin && <td data-label="Boutique">{b.shop?.name ?? `#${b.shop_id}`}</td>}
+                <td className="num" data-label="Coût de revient">{formatMoney(b.cost_price)}</td>
+                <td className="num" data-label="Prix minimum">{formatMoney(b.min_price)}</td>
+                <td data-label="Disponible">
                   <span className={`badge ${b.quantity_available === 0 ? 'bad' : b.quantity_available <= 5 ? 'warn' : 'ok'}`}>
                     {b.quantity_available}
                   </span>
                 </td>
-                <td>{formatDate(b.received_at)}</td>
-                <td>
+                <td data-label="Reçu le">{formatDate(b.received_at)}</td>
+                <td data-label="">
                   <button type="button" className="btn btn-sm btn-ghost" onClick={() => setCodeBatch(b)}>
                     🏷️ Code
                   </button>

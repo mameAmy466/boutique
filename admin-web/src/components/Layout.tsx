@@ -52,7 +52,7 @@ export function ProtectedLayout() {
             <span className="name">{user.name}</span>
             <span className="role">{ROLE_LABELS[user.role?.slug ?? ''] ?? user.role?.name}</span>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => logout()} style={{ width: '100%' }}>
+          <button className="btn btn-ghost btn-sm logout-btn" onClick={() => logout()}>
             Se déconnecter
           </button>
         </div>
