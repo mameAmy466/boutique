@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { BatchCodeModal } from '../components/BatchCodeModal';
 import { formatDate, formatMoney } from '../lib/format';
+import { IconBox } from '../components/DashboardIcons';
 
 function emptyForm(defaultShopId: string) {
   return {
@@ -80,9 +81,14 @@ export function StocksPage() {
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1>Stock</h1>
-          <p>{batches.length} lot{batches.length > 1 ? 's' : ''} en circulation</p>
+        <div className="page-header-title">
+          <div className="page-icon">
+            <IconBox />
+          </div>
+          <div>
+            <h1>Stock</h1>
+            <p>{batches.length} lot{batches.length > 1 ? 's' : ''} en circulation</p>
+          </div>
         </div>
         {canReceive && (
           <button className="btn btn-primary" onClick={() => setShowReceive(true)}>

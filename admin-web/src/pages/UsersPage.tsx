@@ -3,6 +3,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { Role, Shop, User } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { IconUsers } from '../components/DashboardIcons';
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: 'Administrateur général',
@@ -90,9 +91,14 @@ export function UsersPage() {
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1>Utilisateurs</h1>
-          <p>{users.length} compte{users.length > 1 ? 's' : ''}</p>
+        <div className="page-header-title">
+          <div className="page-icon">
+            <IconUsers />
+          </div>
+          <div>
+            <h1>Utilisateurs</h1>
+            <p>{users.length} compte{users.length > 1 ? 's' : ''}</p>
+          </div>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           + Nouvel utilisateur

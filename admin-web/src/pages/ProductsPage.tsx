@@ -3,6 +3,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { Category, Product, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { IconTag } from '../components/DashboardIcons';
 
 function emptyForm() {
   return {
@@ -100,9 +101,14 @@ export function ProductsPage() {
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1>Produits</h1>
-          <p>{products.length} article{products.length > 1 ? 's' : ''} au catalogue</p>
+        <div className="page-header-title">
+          <div className="page-icon">
+            <IconTag />
+          </div>
+          <div>
+            <h1>Produits</h1>
+            <p>{products.length} article{products.length > 1 ? 's' : ''} au catalogue</p>
+          </div>
         </div>
         {canManage && (
           <button className="btn btn-primary" onClick={() => setShowCreate(true)}>

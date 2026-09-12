@@ -4,6 +4,7 @@ import type { Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { formatMoney } from '../lib/format';
+import { IconShop } from '../components/DashboardIcons';
 
 const STATUS_BADGE: Record<Shop['status'], string> = {
   active: 'ok',
@@ -82,9 +83,14 @@ export function ShopsPage() {
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1>Boutiques</h1>
-          <p>{shops.length} boutique{shops.length > 1 ? 's' : ''} visible{shops.length > 1 ? 's' : ''}</p>
+        <div className="page-header-title">
+          <div className="page-icon">
+            <IconShop />
+          </div>
+          <div>
+            <h1>Boutiques</h1>
+            <p>{shops.length} boutique{shops.length > 1 ? 's' : ''} visible{shops.length > 1 ? 's' : ''}</p>
+          </div>
         </div>
         {canCreate && (
           <button className="btn btn-primary" onClick={() => setShowCreate(true)}>

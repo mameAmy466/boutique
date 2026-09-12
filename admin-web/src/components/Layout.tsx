@@ -1,5 +1,8 @@
 import { NavLink, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { Logo } from './Logo';
+import { IconBox, IconGrid, IconMoon, IconRegister, IconShop, IconSun, IconTag, IconUsers } from './DashboardIcons';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Administrateur général',
@@ -9,6 +12,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function ProtectedLayout() {
   const { user, loading, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   if (loading) {
     return <div className="spinner-line" style={{ padding: 40 }}>Chargement…</div>;
@@ -22,29 +26,29 @@ export function ProtectedLayout() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="dot" />
+          <Logo />
           Boutique Admin
         </div>
 
         <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          Tableau de bord
+          <IconGrid /> Tableau de bord
         </NavLink>
         <NavLink to="/shops" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          Boutiques
+          <IconShop /> Boutiques
         </NavLink>
         {(user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique') && (
           <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            Utilisateurs
+            <IconUsers /> Utilisateurs
           </NavLink>
         )}
         <NavLink to="/products" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          Produits
+          <IconTag /> Produits
         </NavLink>
         <NavLink to="/stocks" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          Stock
+          <IconBox /> Stock
         </NavLink>
         <NavLink to="/sales" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          Ventes
+          <IconRegister /> Ventes
         </NavLink>
 
         <div className="sidebar-footer">
@@ -52,9 +56,19 @@ export function ProtectedLayout() {
             <span className="name">{user.name}</span>
             <span className="role">{ROLE_LABELS[user.role?.slug ?? ''] ?? user.role?.name}</span>
           </div>
-          <button className="btn btn-ghost btn-sm logout-btn" onClick={() => logout()}>
-            Se déconnecter
-          </button>
+          <div className="sidebar-footer-actions">
+            <button
+              className="btn btn-ghost btn-sm theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              aria-label="Changer de thème"
+            >
+              {theme === 'dark' ? <IconSun /> : <IconMoon />}
+            </button>
+            <button className="btn btn-ghost btn-sm logout-btn" onClick={() => logout()}>
+              Se déconnecter
+            </button>
+          </div>
         </div>
       </aside>
 

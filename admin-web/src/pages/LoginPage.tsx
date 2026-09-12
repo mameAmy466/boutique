@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
+import { Logo } from '../components/Logo';
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -33,7 +34,7 @@ export function LoginPage() {
     <div className="login-shell">
       <div className="login-card card">
         <div className="brand">
-          <span className="dot" />
+          <Logo size={30} />
           Boutique Admin
         </div>
         <h1>Connexion</h1>

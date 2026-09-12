@@ -71,3 +71,51 @@ export function IconShop(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function IconUsers(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="7.3" cy="7" r="2.6" />
+      <path d="M2.5 16c.4-2.7 2.3-4.3 4.8-4.3s4.4 1.6 4.8 4.3" />
+      <circle cx="14" cy="6.3" r="2" />
+      <path d="M12.8 11.9c1.9.2 3.3 1.7 3.7 4.1" />
+    </svg>
+  );
+}
+
+export function IconTag(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M10.8 3H16v5.2L8.6 15.6a1.4 1.4 0 0 1-2 0L3.4 12.4a1.4 1.4 0 0 1 0-2L10.8 3Z" />
+      <circle cx="13.2" cy="5.8" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconSun(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="10" cy="10" r="3.4" />
+      <path d="M10 2.7v2M10 15.3v2M17.3 10h-2M4.7 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8" />
+    </svg>
+  );
+}
+
+export function IconGrid(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="3" width="6" height="6" rx="1.4" />
+      <rect x="11" y="3" width="6" height="6" rx="1.4" />
+      <rect x="3" y="11" width="6" height="6" rx="1.4" />
+      <rect x="11" y="11" width="6" height="6" rx="1.4" />
+    </svg>
+  );
+}
+
+export function IconMoon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M16.5 12.3A6.8 6.8 0 1 1 7.7 3.5a5.6 5.6 0 0 0 8.8 8.8Z" />
+    </svg>
+  );
+}

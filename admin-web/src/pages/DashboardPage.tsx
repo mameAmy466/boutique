@@ -6,7 +6,7 @@ import { formatMoney } from '../lib/format';
 import { SalesTrendChart } from '../components/charts/SalesTrendChart';
 import { TopProductsChart } from '../components/charts/TopProductsChart';
 import { ShopComparisonChart } from '../components/charts/ShopComparisonChart';
-import { IconAlert, IconBox, IconCoin, IconRegister, IconShop, IconTrend } from '../components/DashboardIcons';
+import { IconAlert, IconBox, IconCoin, IconGrid, IconRegister, IconShop, IconTrend } from '../components/DashboardIcons';
 
 const TODAY_LABEL = new Date().toLocaleDateString('fr-FR', {
   weekday: 'long',
@@ -40,11 +40,16 @@ export function DashboardPage() {
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1>Tableau de bord</h1>
-          <p>
-            {title} · {TODAY_LABEL}
-          </p>
+        <div className="page-header-title">
+          <div className="page-icon">
+            <IconGrid />
+          </div>
+          <div>
+            <h1>Tableau de bord</h1>
+            <p>
+              {title} · {TODAY_LABEL}
+            </p>
+          </div>
         </div>
       </div>
 

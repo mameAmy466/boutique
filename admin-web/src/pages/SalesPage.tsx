@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { InvoiceReceipt } from '../components/InvoiceReceipt';
 import { formatDate, formatMoney } from '../lib/format';
+import { IconRegister } from '../components/DashboardIcons';
 
 const BarcodeScannerModal = lazy(() =>
   import('../components/BarcodeScannerModal').then((m) => ({ default: m.BarcodeScannerModal })),
@@ -234,9 +235,14 @@ export function SalesPage() {
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1>Ventes</h1>
-          <p>{sales.length} vente{sales.length > 1 ? 's' : ''} récente{sales.length > 1 ? 's' : ''}</p>
+        <div className="page-header-title">
+          <div className="page-icon">
+            <IconRegister />
+          </div>
+          <div>
+            <h1>Ventes</h1>
+            <p>{sales.length} vente{sales.length > 1 ? 's' : ''} récente{sales.length > 1 ? 's' : ''}</p>
+          </div>
         </div>
         <button className="btn btn-primary" onClick={() => setShowNew(true)}>
           + Nouvelle vente
