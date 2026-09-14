@@ -67,6 +67,35 @@ class StockController extends Controller
         return response()->json($batch, 201);
     }
 
+    public function update(Request $request, ProductBatch $batch)
+    {
+        $this->authorize('update', $batch);
+
+        $data = $request->validate([
+            'purchase_cost' => ['required', 'numeric', 'min:0'],
+            'additional_costs' => ['nullable', 'numeric', 'min:0'],
+            'min_profit_amount' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $batch = $this->stock->updatePricing(
+            $batch,
+            $data['purchase_cost'],
+            $data['additional_costs'] ?? 0,
+            $data['min_profit_amount'],
+        );
+
+        return response()->json($batch);
+    }
+
+    public function destroy(Request $request, ProductBatch $batch)
+    {
+        $this->authorize('delete', $batch);
+
+        $this->stock->deleteBatch($batch);
+
+        return response()->json(null, 204);
+    }
+
     public function adjust(Request $request, ProductBatch $batch)
     {
         $this->authorize('adjust', $batch);

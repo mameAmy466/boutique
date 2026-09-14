@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Exceptions\BatchInUseException;
 use App\Exceptions\InsufficientStockException;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\SaleItem;
 use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -86,6 +88,45 @@ class StockService
 
             return $batch;
         });
+    }
+
+    /**
+     * Correct the purchase price / minimum price of a batch (e.g. a data
+     * entry mistake at reception). Recomputes cost_price and min_price the
+     * same way receiveBatch does — never trust a price sent from the client.
+     */
+    public function updatePricing(
+        ProductBatch $batch,
+        float $purchaseCost,
+        float $additionalCosts,
+        float $minProfitAmount,
+    ): ProductBatch {
+        $costPrice = $this->pricing->computeCostPrice($purchaseCost, $additionalCosts);
+        $minPrice = $this->pricing->computeMinPrice($costPrice, $minProfitAmount);
+
+        $batch->update([
+            'purchase_cost' => $purchaseCost,
+            'additional_costs' => $additionalCosts,
+            'cost_price' => $costPrice,
+            'min_profit_amount' => $minProfitAmount,
+            'min_price' => $minPrice,
+        ]);
+
+        return $batch;
+    }
+
+    /**
+     * Delete a batch entirely (e.g. wrong product selected at reception).
+     * Refused once any sale has drawn from it, since sale_items cascades on
+     * product_batch_id and would otherwise silently erase sale history.
+     */
+    public function deleteBatch(ProductBatch $batch): void
+    {
+        if (SaleItem::where('product_batch_id', $batch->id)->exists()) {
+            throw new BatchInUseException();
+        }
+
+        $batch->delete();
     }
 
     /**

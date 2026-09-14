@@ -18,6 +18,14 @@ function emptyForm(defaultShopId: string) {
   };
 }
 
+function emptyEditForm(batch: ProductBatch) {
+  return {
+    purchase_cost: batch.purchase_cost,
+    additional_costs: batch.additional_costs,
+    min_profit_amount: batch.min_profit_amount,
+  };
+}
+
 export function StocksPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
@@ -34,6 +42,19 @@ export function StocksPage() {
   const [form, setForm] = useState(() => emptyForm(user?.shop_id ? String(user.shop_id) : ''));
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [editBatch, setEditBatch] = useState<ProductBatch | null>(null);
+  const [editForm, setEditForm] = useState({ purchase_cost: '', additional_costs: '', min_profit_amount: '' });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  const [adjustBatch, setAdjustBatch] = useState<ProductBatch | null>(null);
+  const [adjustForm, setAdjustForm] = useState({ physical_quantity: '', reason: '' });
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   function loadAll() {
     setLoading(true);
@@ -78,6 +99,77 @@ export function StocksPage() {
     }
   }
 
+  const editPreview = useMemo(() => {
+    const cost = Number(editForm.purchase_cost || 0) + Number(editForm.additional_costs || 0);
+    const min = cost + Number(editForm.min_profit_amount || 0);
+    return { cost, min };
+  }, [editForm.purchase_cost, editForm.additional_costs, editForm.min_profit_amount]);
+
+  function openEdit(batch: ProductBatch) {
+    setEditError(null);
+    setEditForm(emptyEditForm(batch));
+    setEditBatch(batch);
+  }
+
+  async function handleEditSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!editBatch) return;
+    setEditError(null);
+    setEditSubmitting(true);
+    try {
+      await api.put(`/stocks/${editBatch.id}`, {
+        purchase_cost: Number(editForm.purchase_cost),
+        additional_costs: Number(editForm.additional_costs || 0),
+        min_profit_amount: Number(editForm.min_profit_amount),
+      });
+      setEditBatch(null);
+      loadAll();
+    } catch (err) {
+      setEditError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
+
+  function openAdjust(batch: ProductBatch) {
+    setAdjustError(null);
+    setAdjustForm({ physical_quantity: String(batch.quantity_available), reason: '' });
+    setAdjustBatch(batch);
+  }
+
+  async function handleAdjustSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!adjustBatch) return;
+    setAdjustError(null);
+    setAdjustSubmitting(true);
+    try {
+      await api.post(`/stocks/${adjustBatch.id}/adjust`, {
+        physical_quantity: Number(adjustForm.physical_quantity),
+        reason: adjustForm.reason,
+      });
+      setAdjustBatch(null);
+      loadAll();
+    } catch (err) {
+      setAdjustError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
+    } finally {
+      setAdjustSubmitting(false);
+    }
+  }
+
+  async function handleDelete(batch: ProductBatch) {
+    setDeleteError(null);
+    if (!window.confirm(`Supprimer définitivement le lot ${batch.batch_code} ?`)) return;
+    setDeletingId(batch.id);
+    try {
+      await api.delete(`/stocks/${batch.id}`);
+      loadAll();
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : 'Erreur inattendue.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <>
       <div className="page-header">
@@ -98,6 +190,7 @@ export function StocksPage() {
       </div>
 
       {error && <div className="alert error">{error}</div>}
+      {deleteError && <div className="alert error">{deleteError}</div>}
 
       <div className="table-wrap table-scroll cards-sm">
         <table>
@@ -137,10 +230,28 @@ export function StocksPage() {
                   </span>
                 </td>
                 <td data-label="Reçu le">{formatDate(b.received_at)}</td>
-                <td data-label="">
+                <td data-label="" className="row-actions">
                   <button type="button" className="btn btn-sm btn-ghost" onClick={() => setCodeBatch(b)}>
                     🏷️ Code
                   </button>
+                  {canReceive && (
+                    <>
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => openAdjust(b)}>
+                        📋 Ajuster
+                      </button>
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => openEdit(b)}>
+                        ✏️ Modifier
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost danger"
+                        disabled={deletingId === b.id}
+                        onClick={() => handleDelete(b)}
+                      >
+                        🗑️ {deletingId === b.id ? '…' : 'Supprimer'}
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -249,6 +360,109 @@ export function StocksPage() {
       )}
 
       {codeBatch && <BatchCodeModal batch={codeBatch} onClose={() => setCodeBatch(null)} />}
+
+      {editBatch && (
+        <Modal title={`Modifier le lot ${editBatch.batch_code}`} onClose={() => setEditBatch(null)}>
+          <form onSubmit={handleEditSubmit}>
+            {editError && <div className="alert error">{editError}</div>}
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="e-cost">Prix d'achat unitaire</label>
+                <input
+                  id="e-cost"
+                  type="number"
+                  min={0}
+                  value={editForm.purchase_cost}
+                  onChange={(e) => setEditForm({ ...editForm, purchase_cost: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="e-extra">Frais associés (transport…)</label>
+                <input
+                  id="e-extra"
+                  type="number"
+                  min={0}
+                  value={editForm.additional_costs}
+                  onChange={(e) => setEditForm({ ...editForm, additional_costs: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="e-profit">Bénéfice minimum unitaire</label>
+                <input
+                  id="e-profit"
+                  type="number"
+                  min={0}
+                  value={editForm.min_profit_amount}
+                  onChange={(e) => setEditForm({ ...editForm, min_profit_amount: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="alert success" style={{ marginTop: 14 }}>
+              Coût de revient calculé : <strong className="num">{formatMoney(editPreview.cost)}</strong> · Prix minimum
+              de vente : <strong className="num">{formatMoney(editPreview.min)}</strong>
+            </div>
+            <p className="hint" style={{ marginTop: 8 }}>
+              Cette correction ne change pas la quantité disponible ({editBatch.quantity_available}).
+            </p>
+
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setEditBatch(null)}>
+                Annuler
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={editSubmitting}>
+                {editSubmitting ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {adjustBatch && (
+        <Modal title={`Ajuster le lot ${adjustBatch.batch_code}`} onClose={() => setAdjustBatch(null)}>
+          <form onSubmit={handleAdjustSubmit}>
+            {adjustError && <div className="alert error">{adjustError}</div>}
+            <p className="hint" style={{ marginBottom: 12 }}>
+              À utiliser après un comptage physique du stock. Quantité système actuelle :{' '}
+              <strong>{adjustBatch.quantity_available}</strong>.
+            </p>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="a-qty">Quantité physique comptée</label>
+                <input
+                  id="a-qty"
+                  type="number"
+                  min={0}
+                  value={adjustForm.physical_quantity}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, physical_quantity: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="a-reason">Motif de la correction</label>
+                <input
+                  id="a-reason"
+                  value={adjustForm.reason}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
+                  placeholder="Ex : erreur de comptage à la réception"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setAdjustBatch(null)}>
+                Annuler
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={adjustSubmitting}>
+                {adjustSubmitting ? 'Enregistrement…' : 'Ajuster le stock'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </>
   );
 }

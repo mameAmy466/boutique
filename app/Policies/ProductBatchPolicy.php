@@ -31,4 +31,18 @@ class ProductBatchPolicy
     {
         return $user->isSuperAdmin() || ($user->isShopAdmin() && $user->shop_id === $batch->shop_id);
     }
+
+    /**
+     * Correcting the purchase price / minimum price of a batch is the same
+     * trust level as receiving or adjusting stock.
+     */
+    public function update(User $user, ProductBatch $batch): bool
+    {
+        return $user->isSuperAdmin() || ($user->isShopAdmin() && $user->shop_id === $batch->shop_id);
+    }
+
+    public function delete(User $user, ProductBatch $batch): bool
+    {
+        return $user->isSuperAdmin() || ($user->isShopAdmin() && $user->shop_id === $batch->shop_id);
+    }
 }

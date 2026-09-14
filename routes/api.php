@@ -31,6 +31,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/stocks', [StockController::class, 'index']);
     Route::post('/stocks', [StockController::class, 'store']);
+    Route::put('/stocks/{batch}', [StockController::class, 'update']);
+    Route::delete('/stocks/{batch}', [StockController::class, 'destroy']);
     Route::post('/stocks/{batch}/adjust', [StockController::class, 'adjust']);
     Route::post('/stocks/{batch}/shrinkage', [StockController::class, 'shrinkage']);
     Route::get('/stocks/movements', [StockController::class, 'movements']);

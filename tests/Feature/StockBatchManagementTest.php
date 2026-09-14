@@ -1,0 +1,140 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\CashRegister;
+use App\Models\CashSession;
+use App\Models\Product;
+use App\Models\ProductBatch;
+use App\Models\Role;
+use App\Models\Shop;
+use App\Models\User;
+use App\Services\SaleService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class StockBatchManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function makeShopAdminWithBatch(): array
+    {
+        $role = Role::create(['name' => 'Administrateur de boutique', 'slug' => Role::ADMIN_BOUTIQUE]);
+        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BT01']);
+        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id]);
+
+        $product = Product::create(['name' => 'Téléphone', 'reference' => 'REF-100']);
+
+        $batch = ProductBatch::create([
+            'batch_code' => 'BT01-2026-000001',
+            'product_id' => $product->id,
+            'shop_id' => $shop->id,
+            'purchase_cost' => 50000,
+            'additional_costs' => 2000,
+            'cost_price' => 52000,
+            'min_profit_amount' => 8000,
+            'min_price' => 60000,
+            'quantity_received' => 10,
+            'quantity_available' => 10,
+            'received_at' => now(),
+        ]);
+
+        return compact('shop', 'admin', 'product', 'batch');
+    }
+
+    public function test_a_shop_admin_can_correct_the_price_of_their_own_batch(): void
+    {
+        ['admin' => $admin, 'batch' => $batch] = $this->makeShopAdminWithBatch();
+
+        $response = $this->actingAs($admin, 'sanctum')->putJson("/api/stocks/{$batch->id}", [
+            'purchase_cost' => 51000,
+            'additional_costs' => 1000,
+            'min_profit_amount' => 9000,
+        ]);
+
+        $response->assertOk();
+        $batch->refresh();
+        $this->assertSame('52000.00', $batch->cost_price);
+        $this->assertSame('61000.00', $batch->min_price);
+    }
+
+    public function test_a_shop_admin_cannot_edit_a_batch_from_another_shop(): void
+    {
+        ['admin' => $admin] = $this->makeShopAdminWithBatch();
+        $otherShop = Shop::create(['name' => 'Boutique B', 'code' => 'BT02']);
+        $product = Product::create(['name' => 'Casque', 'reference' => 'REF-200']);
+        $otherBatch = ProductBatch::create([
+            'batch_code' => 'BT02-2026-000001',
+            'product_id' => $product->id,
+            'shop_id' => $otherShop->id,
+            'purchase_cost' => 1000,
+            'additional_costs' => 0,
+            'cost_price' => 1000,
+            'min_profit_amount' => 200,
+            'min_price' => 1200,
+            'quantity_received' => 5,
+            'quantity_available' => 5,
+            'received_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin, 'sanctum')->putJson("/api/stocks/{$otherBatch->id}", [
+            'purchase_cost' => 1,
+            'additional_costs' => 0,
+            'min_profit_amount' => 1,
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_an_unused_batch_can_be_deleted(): void
+    {
+        ['admin' => $admin, 'batch' => $batch] = $this->makeShopAdminWithBatch();
+
+        $response = $this->actingAs($admin, 'sanctum')->deleteJson("/api/stocks/{$batch->id}");
+
+        $response->assertStatus(204);
+        $this->assertDatabaseMissing('product_batches', ['id' => $batch->id]);
+    }
+
+    public function test_a_batch_already_used_in_a_sale_cannot_be_deleted(): void
+    {
+        ['shop' => $shop, 'admin' => $admin, 'batch' => $batch] = $this->makeShopAdminWithBatch();
+
+        $register = CashRegister::create(['shop_id' => $shop->id, 'name' => 'Caisse 1']);
+        $session = CashSession::create([
+            'cash_register_id' => $register->id,
+            'user_id' => $admin->id,
+            'opening_amount' => 0,
+            'opened_at' => now(),
+            'status' => CashSession::STATUS_OPEN,
+        ]);
+
+        app(SaleService::class)->createSale(
+            shop: $shop,
+            cashier: $admin,
+            cashSession: $session,
+            items: [['product_batch_id' => $batch->id, 'quantity' => 1, 'unit_price' => 70000]],
+            paymentMethod: 'cash',
+        );
+
+        $response = $this->actingAs($admin, 'sanctum')->deleteJson("/api/stocks/{$batch->id}");
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('product_batches', ['id' => $batch->id]);
+    }
+
+    public function test_a_cashier_cannot_edit_or_delete_a_batch(): void
+    {
+        ['shop' => $shop, 'batch' => $batch] = $this->makeShopAdminWithBatch();
+        $cashierRole = Role::create(['name' => 'Caissier', 'slug' => Role::CAISSIER]);
+        $cashier = User::factory()->create(['role_id' => $cashierRole->id, 'shop_id' => $shop->id]);
+
+        $this->actingAs($cashier, 'sanctum')
+            ->putJson("/api/stocks/{$batch->id}", ['purchase_cost' => 1, 'additional_costs' => 0, 'min_profit_amount' => 1])
+            ->assertStatus(403);
+
+        $this->actingAs($cashier, 'sanctum')
+            ->deleteJson("/api/stocks/{$batch->id}")
+            ->assertStatus(403);
+    }
+}

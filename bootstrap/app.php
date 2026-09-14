@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\BatchInUseException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\PriceBelowMinimumException;
 use Illuminate\Auth\AuthenticationException;
@@ -41,5 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 'available' => $e->available,
                 'requested' => $e->requested,
             ], 422);
+        });
+
+        $exceptions->render(function (BatchInUseException $e, $request) {
+            return response()->json(['message' => $e->getMessage()], 422);
         });
     })->create();
