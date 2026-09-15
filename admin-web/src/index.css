@@ -397,6 +397,15 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.tile:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 2px 4px rgba(27, 31, 39, 0.05), 0 14px 26px -14px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .tile-icon {
   width: 30px;
@@ -502,6 +511,63 @@ h3 {
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 14px;
+}
+.card-link {
+  margin-left: auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.card-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Activity feed (dashboard) ---------- */
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.activity-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 6px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 13px;
+}
+.activity-row:hover {
+  background: var(--surface-2);
+}
+.activity-row .badge {
+  flex: none;
+}
+.activity-desc {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-user {
+  color: var(--ink-soft);
+}
+.activity-date {
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .activity-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .activity-date {
+    order: 3;
+  }
 }
 .chart-grid-2 {
   display: grid;

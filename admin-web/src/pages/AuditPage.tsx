@@ -1,39 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import type { Paginated, Shop, StockMovement, StockMovementType } from '../api/types';
+import type { Paginated, Shop, StockMovement } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../lib/format';
+import { STOCK_MOVEMENT_BADGE as TYPE_BADGE, STOCK_MOVEMENT_LABEL as TYPE_LABEL } from '../lib/stockMovements';
 import { IconAudit } from '../components/DashboardIcons';
-
-const TYPE_LABEL: Record<StockMovementType, string> = {
-  entry: 'Réception',
-  sale: 'Vente',
-  transfer_out: 'Transfert sortant',
-  transfer_in: 'Transfert entrant',
-  damage: 'Casse',
-  loss: 'Perte',
-  theft: 'Vol',
-  expiration: 'Péremption',
-  adjustment: 'Ajustement (inventaire)',
-  return: 'Retour',
-  price_correction: 'Correction de prix',
-  deletion: 'Suppression de lot',
-};
-
-const TYPE_BADGE: Record<StockMovementType, string> = {
-  entry: 'ok',
-  sale: 'neutral',
-  transfer_out: 'neutral',
-  transfer_in: 'neutral',
-  damage: 'bad',
-  loss: 'bad',
-  theft: 'bad',
-  expiration: 'bad',
-  adjustment: 'warn',
-  return: 'neutral',
-  price_correction: 'warn',
-  deletion: 'bad',
-};
 
 export function AuditPage() {
   const { user } = useAuth();
