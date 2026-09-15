@@ -94,39 +94,76 @@ class StockService
      * Correct the purchase price / minimum price of a batch (e.g. a data
      * entry mistake at reception). Recomputes cost_price and min_price the
      * same way receiveBatch does — never trust a price sent from the client.
+     * Logged as a stock movement (quantity untouched) so the correction is
+     * traceable to whichever account made it, like every other stock change.
      */
     public function updatePricing(
         ProductBatch $batch,
         float $purchaseCost,
         float $additionalCosts,
         float $minProfitAmount,
+        User $actor,
     ): ProductBatch {
-        $costPrice = $this->pricing->computeCostPrice($purchaseCost, $additionalCosts);
-        $minPrice = $this->pricing->computeMinPrice($costPrice, $minProfitAmount);
+        return DB::transaction(function () use ($batch, $purchaseCost, $additionalCosts, $minProfitAmount, $actor) {
+            $previousCostPrice = (float) $batch->cost_price;
+            $previousMinPrice = (float) $batch->min_price;
 
-        $batch->update([
-            'purchase_cost' => $purchaseCost,
-            'additional_costs' => $additionalCosts,
-            'cost_price' => $costPrice,
-            'min_profit_amount' => $minProfitAmount,
-            'min_price' => $minPrice,
-        ]);
+            $costPrice = $this->pricing->computeCostPrice($purchaseCost, $additionalCosts);
+            $minPrice = $this->pricing->computeMinPrice($costPrice, $minProfitAmount);
 
-        return $batch;
+            $batch->update([
+                'purchase_cost' => $purchaseCost,
+                'additional_costs' => $additionalCosts,
+                'cost_price' => $costPrice,
+                'min_profit_amount' => $minProfitAmount,
+                'min_price' => $minPrice,
+            ]);
+
+            StockMovement::create([
+                'product_batch_id' => $batch->id,
+                'shop_id' => $batch->shop_id,
+                'type' => StockMovement::TYPE_PRICE_CORRECTION,
+                'quantity' => 0,
+                'note' => sprintf(
+                    'Coût de revient %.2f → %.2f, prix minimum %.2f → %.2f',
+                    $previousCostPrice,
+                    $costPrice,
+                    $previousMinPrice,
+                    $minPrice,
+                ),
+                'user_id' => $actor->id,
+            ]);
+
+            return $batch;
+        });
     }
 
     /**
      * Delete a batch entirely (e.g. wrong product selected at reception).
      * Refused once any sale has drawn from it, since sale_items cascades on
      * product_batch_id and would otherwise silently erase sale history.
+     * The batch is soft-deleted (not removed) and the deletion itself is
+     * logged as a stock movement, so this action stays traceable and the
+     * lot's prior history is never lost.
      */
-    public function deleteBatch(ProductBatch $batch): void
+    public function deleteBatch(ProductBatch $batch, User $actor): void
     {
         if (SaleItem::where('product_batch_id', $batch->id)->exists()) {
             throw new BatchInUseException();
         }
 
-        $batch->delete();
+        DB::transaction(function () use ($batch, $actor) {
+            StockMovement::create([
+                'product_batch_id' => $batch->id,
+                'shop_id' => $batch->shop_id,
+                'type' => StockMovement::TYPE_DELETION,
+                'quantity' => -$batch->quantity_available,
+                'note' => sprintf('Lot %s supprimé', $batch->batch_code),
+                'user_id' => $actor->id,
+            ]);
+
+            $batch->delete();
+        });
     }
 
     /**

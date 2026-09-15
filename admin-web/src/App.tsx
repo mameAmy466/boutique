@@ -9,6 +9,8 @@ import { ProductsPage } from './pages/ProductsPage';
 import { SuppliersPage } from './pages/SuppliersPage';
 import { StocksPage } from './pages/StocksPage';
 import { SalesPage } from './pages/SalesPage';
+import { AuditPage } from './pages/AuditPage';
+import { InventoryPage } from './pages/InventoryPage';
 
 export default function App() {
   return (
@@ -24,6 +26,8 @@ export default function App() {
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/stocks" element={<StocksPage />} />
             <Route path="/sales" element={<SalesPage />} />
+            <Route path="/audit" element={<AuditPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
           </Route>
         </Routes>
       </AuthProvider>

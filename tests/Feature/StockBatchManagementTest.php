@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Role;
 use App\Models\Shop;
+use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\SaleService;
@@ -57,6 +58,14 @@ class StockBatchManagementTest extends TestCase
         $batch->refresh();
         $this->assertSame('52000.00', $batch->cost_price);
         $this->assertSame('61000.00', $batch->min_price);
+
+        // The correction must be traceable to the account that made it.
+        $movement = StockMovement::where('product_batch_id', $batch->id)
+            ->where('type', StockMovement::TYPE_PRICE_CORRECTION)
+            ->first();
+        $this->assertNotNull($movement);
+        $this->assertSame($admin->id, $movement->user_id);
+        $this->assertSame(0, $movement->quantity);
     }
 
     public function test_a_shop_admin_cannot_edit_a_batch_from_another_shop(): void
@@ -94,7 +103,27 @@ class StockBatchManagementTest extends TestCase
         $response = $this->actingAs($admin, 'sanctum')->deleteJson("/api/stocks/{$batch->id}");
 
         $response->assertStatus(204);
-        $this->assertDatabaseMissing('product_batches', ['id' => $batch->id]);
+
+        // Soft-deleted, not erased: it disappears from the active stock
+        // list but its history stays intact for the audit trail.
+        $this->assertSoftDeleted('product_batches', ['id' => $batch->id]);
+
+        $activeList = $this->actingAs($admin, 'sanctum')->getJson('/api/stocks');
+        $this->assertEmpty(collect($activeList->json())->where('id', $batch->id));
+
+        $deletion = StockMovement::where('product_batch_id', $batch->id)
+            ->where('type', StockMovement::TYPE_DELETION)
+            ->first();
+        $this->assertNotNull($deletion);
+        $this->assertSame($admin->id, $deletion->user_id);
+        $this->assertSame(-10, $deletion->quantity);
+
+        // The deletion's own audit entry must still resolve the batch code
+        // and product name even though the batch itself is gone.
+        $movements = $this->actingAs($admin, 'sanctum')->getJson('/api/stocks/movements');
+        $entry = collect($movements->json('data'))->firstWhere('id', $deletion->id);
+        $this->assertSame('BT01-2026-000001', $entry['product_batch']['batch_code']);
+        $this->assertSame('Téléphone', $entry['product_batch']['product']['name']);
     }
 
     public function test_a_batch_already_used_in_a_sale_cannot_be_deleted(): void

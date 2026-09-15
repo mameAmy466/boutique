@@ -82,6 +82,7 @@ class StockController extends Controller
             $data['purchase_cost'],
             $data['additional_costs'] ?? 0,
             $data['min_profit_amount'],
+            $request->user(),
         );
 
         return response()->json($batch);
@@ -91,7 +92,7 @@ class StockController extends Controller
     {
         $this->authorize('delete', $batch);
 
-        $this->stock->deleteBatch($batch);
+        $this->stock->deleteBatch($batch, $request->user());
 
         return response()->json(null, 204);
     }
@@ -140,7 +141,13 @@ class StockController extends Controller
     {
         $actor = $request->user();
 
-        $query = StockMovement::query()->with(['productBatch.product', 'shop', 'user']);
+        // withTrashed(): a deleted batch's own history (including its
+        // deletion entry) must stay resolvable to a batch_code/product name.
+        $query = StockMovement::query()->with([
+            'productBatch' => fn ($q) => $q->withTrashed()->with('product'),
+            'shop',
+            'user',
+        ]);
 
         if (! $actor->isSuperAdmin()) {
             $query->where('shop_id', $actor->shop_id);

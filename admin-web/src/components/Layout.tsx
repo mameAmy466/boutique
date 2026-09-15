@@ -3,7 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Logo } from './Logo';
 import {
+  IconAudit,
   IconBox,
+  IconClipboard,
   IconGrid,
   IconMoon,
   IconRegister,
@@ -63,6 +65,16 @@ export function ProtectedLayout() {
         <NavLink to="/sales" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           <IconRegister /> Ventes
         </NavLink>
+        {(user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique') && (
+          <NavLink to="/audit" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <IconAudit /> Audit
+          </NavLink>
+        )}
+        {user.role?.slug === 'super_admin' && (
+          <NavLink to="/inventory" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <IconClipboard /> Inventaire
+          </NavLink>
+        )}
 
         <div className="sidebar-footer">
           <div className="sidebar-user">

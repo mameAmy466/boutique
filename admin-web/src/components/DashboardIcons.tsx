@@ -112,6 +112,25 @@ export function IconTruck(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconAudit(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="8.5" cy="8.5" r="5.2" />
+      <path d="M12.4 12.4 17 17" />
+    </svg>
+  );
+}
+
+export function IconClipboard(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="3.5" width="12" height="14" rx="1.6" />
+      <path d="M7.5 3.5V3a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 12.5 3v.5" />
+      <path d="M7 9h6M7 12h6M7 15h3.5" />
+    </svg>
+  );
+}
+
 export function IconGrid(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>

@@ -30,6 +30,10 @@ class StockMovement extends Model
 
     public const TYPE_RETURN = 'return';
 
+    public const TYPE_PRICE_CORRECTION = 'price_correction';
+
+    public const TYPE_DELETION = 'deletion';
+
     protected $fillable = [
         'product_batch_id',
         'shop_id',

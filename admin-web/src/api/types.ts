@@ -83,6 +83,34 @@ export interface ProductBatch {
   received_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 
+export type StockMovementType =
+  | 'entry'
+  | 'sale'
+  | 'transfer_out'
+  | 'transfer_in'
+  | 'damage'
+  | 'loss'
+  | 'theft'
+  | 'expiration'
+  | 'adjustment'
+  | 'return'
+  | 'price_correction'
+  | 'deletion';
+
+export interface StockMovement {
+  id: number;
+  product_batch_id: number;
+  shop_id: number;
+  type: StockMovementType;
+  quantity: number;
+  note: string | null;
+  user_id: number | null;
+  created_at: string;
+  product_batch?: (Pick<ProductBatch, 'batch_code'> & { product?: Pick<Product, 'name'> }) | null;
+  shop?: Shop;
+  user?: Pick<User, 'id' | 'name'> | null;
+}
+
 export interface CashRegister {
   id: number;
   shop_id: number;
