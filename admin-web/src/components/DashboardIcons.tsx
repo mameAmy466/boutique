@@ -142,6 +142,41 @@ export function IconGrid(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconSearch(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="8.7" cy="8.7" r="5.2" />
+      <path d="M12.6 12.6 17 17" />
+    </svg>
+  );
+}
+
+export function IconBell(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 8.5a5 5 0 0 1 10 0c0 3.5 1.2 4.5 1.5 5.5H3.5C3.8 13 5 12 5 8.5Z" />
+      <path d="M8.3 16.5a1.8 1.8 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+export function IconSettings(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="10" cy="10" r="2.6" />
+      <path d="M10 2.8v2.1M10 15.1v2.1M17.2 10h-2.1M4.9 10H2.8M14.9 5.1l-1.5 1.5M6.6 13.4l-1.5 1.5M14.9 14.9l-1.5-1.5M6.6 6.6 5.1 5.1" />
+    </svg>
+  );
+}
+
+export function IconChevronDown(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 7.5 10 12.5 15 7.5" />
+    </svg>
+  );
+}
+
 export function IconMoon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>

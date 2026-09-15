@@ -11,6 +11,7 @@ import { StocksPage } from './pages/StocksPage';
 import { SalesPage } from './pages/SalesPage';
 import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
+import { AccountPage } from './pages/AccountPage';
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/account" element={<AccountPage />} />
           </Route>
         </Routes>
       </AuthProvider>
