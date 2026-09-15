@@ -76,8 +76,11 @@ export interface ProductBatch {
   quantity_received: number;
   quantity_available: number;
   received_at: string;
+  received_by: number | null;
   product?: Product;
   shop?: Shop;
+  supplier?: Supplier | null;
+  received_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 
 export interface CashRegister {

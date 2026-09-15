@@ -18,7 +18,7 @@ class StockController extends Controller
     {
         $actor = $request->user();
 
-        $query = ProductBatch::query()->with(['product', 'shop', 'supplier']);
+        $query = ProductBatch::query()->with(['product', 'shop', 'supplier', 'receivedByUser']);
 
         if (! $actor->isSuperAdmin()) {
             $query->where('shop_id', $actor->shop_id);
@@ -64,7 +64,7 @@ class StockController extends Controller
             supplierId: $data['supplier_id'] ?? null,
         );
 
-        return response()->json($batch, 201);
+        return response()->json($batch->load(['product', 'shop', 'supplier', 'receivedByUser']), 201);
     }
 
     public function update(Request $request, ProductBatch $batch)

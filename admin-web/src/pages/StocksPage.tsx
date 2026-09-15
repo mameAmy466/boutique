@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
-import type { Product, ProductBatch, Shop } from '../api/types';
+import type { Product, ProductBatch, Shop, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { BatchCodeModal } from '../components/BatchCodeModal';
+import { ReceptionVoucherModal } from '../components/ReceptionVoucherModal';
 import { formatDate, formatMoney } from '../lib/format';
 import { IconBox } from '../components/DashboardIcons';
 
@@ -11,6 +12,7 @@ function emptyForm(defaultShopId: string) {
   return {
     product_id: '',
     shop_id: defaultShopId,
+    supplier_id: '',
     purchase_cost: '',
     additional_costs: '0',
     min_profit_amount: '',
@@ -34,11 +36,13 @@ export function StocksPage() {
   const [batches, setBatches] = useState<ProductBatch[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [showReceive, setShowReceive] = useState(false);
   const [codeBatch, setCodeBatch] = useState<ProductBatch | null>(null);
+  const [voucherBatch, setVoucherBatch] = useState<ProductBatch | null>(null);
   const [form, setForm] = useState(() => emptyForm(user?.shop_id ? String(user.shop_id) : ''));
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -58,11 +62,17 @@ export function StocksPage() {
 
   function loadAll() {
     setLoading(true);
-    Promise.all([api.get<ProductBatch[]>('/stocks'), api.get<Product[]>('/products'), api.get<Shop[]>('/shops')])
-      .then(([b, p, s]) => {
+    Promise.all([
+      api.get<ProductBatch[]>('/stocks'),
+      api.get<Product[]>('/products'),
+      api.get<Shop[]>('/shops'),
+      api.get<Supplier[]>('/suppliers'),
+    ])
+      .then(([b, p, s, sup]) => {
         setBatches(b);
         setProducts(p);
         setShops(s);
+        setSuppliers(sup);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Erreur de chargement.'))
       .finally(() => setLoading(false));
@@ -84,6 +94,7 @@ export function StocksPage() {
       await api.post('/stocks', {
         product_id: Number(form.product_id),
         shop_id: Number(form.shop_id),
+        supplier_id: form.supplier_id ? Number(form.supplier_id) : undefined,
         purchase_cost: Number(form.purchase_cost),
         additional_costs: Number(form.additional_costs || 0),
         min_profit_amount: Number(form.min_profit_amount),
@@ -199,22 +210,24 @@ export function StocksPage() {
               <th>Code lot</th>
               <th>Produit</th>
               {isSuperAdmin && <th>Boutique</th>}
+              <th>Fournisseur</th>
               <th>Coût de revient</th>
               <th>Prix minimum</th>
               <th>Disponible</th>
               <th>Reçu le</th>
+              <th>Reçu par</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 8 : 7}>Chargement…</td>
+                <td colSpan={isSuperAdmin ? 10 : 9}>Chargement…</td>
               </tr>
             )}
             {!loading && batches.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 8 : 7}>Aucun lot en stock pour le moment.</td>
+                <td colSpan={isSuperAdmin ? 10 : 9}>Aucun lot en stock pour le moment.</td>
               </tr>
             )}
             {batches.map((b) => (
@@ -222,6 +235,7 @@ export function StocksPage() {
                 <td className="mono" data-label="Code lot">{b.batch_code}</td>
                 <td data-label="Produit">{b.product?.name ?? `#${b.product_id}`}</td>
                 {isSuperAdmin && <td data-label="Boutique">{b.shop?.name ?? `#${b.shop_id}`}</td>}
+                <td data-label="Fournisseur">{b.supplier?.name ?? '—'}</td>
                 <td className="num" data-label="Coût de revient">{formatMoney(b.cost_price)}</td>
                 <td className="num" data-label="Prix minimum">{formatMoney(b.min_price)}</td>
                 <td data-label="Disponible">
@@ -230,9 +244,13 @@ export function StocksPage() {
                   </span>
                 </td>
                 <td data-label="Reçu le">{formatDate(b.received_at)}</td>
+                <td data-label="Reçu par">{b.received_by_user?.name ?? '—'}</td>
                 <td data-label="" className="row-actions">
                   <button type="button" className="btn btn-sm btn-ghost" onClick={() => setCodeBatch(b)}>
                     🏷️ Code
+                  </button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setVoucherBatch(b)}>
+                    🧾 Bon
                   </button>
                   {canReceive && (
                     <>
@@ -291,6 +309,21 @@ export function StocksPage() {
                 >
                   <option value="">— choisir —</option>
                   {shops.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="s-supplier">Fournisseur</label>
+                <select
+                  id="s-supplier"
+                  value={form.supplier_id}
+                  onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
+                >
+                  <option value="">— non renseigné —</option>
+                  {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
@@ -360,6 +393,10 @@ export function StocksPage() {
       )}
 
       {codeBatch && <BatchCodeModal batch={codeBatch} onClose={() => setCodeBatch(null)} />}
+
+      {voucherBatch && (
+        <ReceptionVoucherModal batch={voucherBatch} shop={voucherBatch.shop ?? null} onClose={() => setVoucherBatch(null)} />
+      )}
 
       {editBatch && (
         <Modal title={`Modifier le lot ${editBatch.batch_code}`} onClose={() => setEditBatch(null)}>

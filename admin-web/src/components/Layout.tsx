@@ -2,7 +2,17 @@ import { NavLink, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Logo } from './Logo';
-import { IconBox, IconGrid, IconMoon, IconRegister, IconShop, IconSun, IconTag, IconUsers } from './DashboardIcons';
+import {
+  IconBox,
+  IconGrid,
+  IconMoon,
+  IconRegister,
+  IconShop,
+  IconSun,
+  IconTag,
+  IconTruck,
+  IconUsers,
+} from './DashboardIcons';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Administrateur général',
@@ -43,6 +53,9 @@ export function ProtectedLayout() {
         )}
         <NavLink to="/products" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           <IconTag /> Produits
+        </NavLink>
+        <NavLink to="/suppliers" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          <IconTruck /> Fournisseurs
         </NavLink>
         <NavLink to="/stocks" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           <IconBox /> Stock

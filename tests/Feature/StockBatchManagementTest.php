@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Role;
 use App\Models\Shop;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Services\SaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -121,6 +122,37 @@ class StockBatchManagementTest extends TestCase
 
         $response->assertStatus(422);
         $this->assertDatabaseHas('product_batches', ['id' => $batch->id]);
+    }
+
+    public function test_receiving_stock_traces_the_supplier_and_the_receiving_user(): void
+    {
+        ['shop' => $shop, 'admin' => $admin, 'product' => $product] = $this->makeShopAdminWithBatch();
+        $supplier = Supplier::create(['name' => 'Grossiste Sénégal']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/stocks', [
+            'product_id' => $product->id,
+            'shop_id' => $shop->id,
+            'supplier_id' => $supplier->id,
+            'purchase_cost' => 1000,
+            'additional_costs' => 0,
+            'min_profit_amount' => 200,
+            'quantity' => 5,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('supplier.id', $supplier->id);
+        $response->assertJsonPath('supplier.name', 'Grossiste Sénégal');
+        $response->assertJsonPath('received_by', $admin->id);
+        $response->assertJsonPath('received_by_user.id', $admin->id);
+        $response->assertJsonPath('received_by_user.name', $admin->name);
+
+        // The receivedByUser relation must never overwrite the received_by
+        // foreign key column when both are serialized together.
+        $listing = $this->actingAs($admin, 'sanctum')->getJson('/api/stocks');
+        $listing->assertOk();
+        $entry = collect($listing->json())->firstWhere('supplier_id', $supplier->id);
+        $this->assertSame($admin->id, $entry['received_by']);
+        $this->assertSame($admin->id, $entry['received_by_user']['id']);
     }
 
     public function test_a_cashier_cannot_edit_or_delete_a_batch(): void

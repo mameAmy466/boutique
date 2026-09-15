@@ -54,7 +54,12 @@ class ProductBatch extends Model
         return $this->belongsTo(Supplier::class);
     }
 
-    public function receivedBy(): BelongsTo
+    /**
+     * Named receivedByUser (not receivedBy) so the relation's snake-cased
+     * JSON key ("received_by_user") never collides with the received_by
+     * foreign key column when both are serialized on the same model.
+     */
+    public function receivedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'received_by');
     }

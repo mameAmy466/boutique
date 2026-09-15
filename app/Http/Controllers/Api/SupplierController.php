@@ -3,10 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
+/**
+ * Suppliers have no dedicated policy: management rights mirror
+ * ProductPolicy's create/update/delete rules (super_admin or shop admin to
+ * manage, super_admin only to delete). Those rules are applied directly
+ * here rather than via authorize('update', Product::class), which would
+ * crash — ProductPolicy::update()/delete() require a Product instance,
+ * and there is none in a supplier request.
+ */
 class SupplierController extends Controller
 {
     public function index()
@@ -16,7 +23,7 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorize('create', Product::class);
+        $this->assertCanManage($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -35,7 +42,7 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier)
     {
-        $this->authorize('update', Product::class);
+        $this->assertCanManage($request);
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -49,12 +56,23 @@ class SupplierController extends Controller
         return response()->json($supplier);
     }
 
-    public function destroy(Supplier $supplier)
+    public function destroy(Request $request, Supplier $supplier)
     {
-        $this->authorize('delete', Product::class);
+        if (! $request->user()->isSuperAdmin()) {
+            abort(403, "Seul l'administrateur général peut supprimer un fournisseur.");
+        }
 
         $supplier->delete();
 
         return response()->json(['message' => 'Fournisseur supprimé.']);
+    }
+
+    private function assertCanManage(Request $request): void
+    {
+        $user = $request->user();
+
+        if (! $user->isSuperAdmin() && ! $user->isShopAdmin()) {
+            abort(403, 'Action réservée aux administrateurs.');
+        }
     }
 }

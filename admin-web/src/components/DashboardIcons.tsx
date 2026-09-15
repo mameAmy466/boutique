@@ -101,6 +101,17 @@ export function IconSun(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconTruck(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2.5 6.5h9v7h-9z" />
+      <path d="M11.5 9.5h3l2.5 2.5v1.5h-5.5z" />
+      <circle cx="6" cy="15" r="1.4" />
+      <circle cx="14" cy="15" r="1.4" />
+    </svg>
+  );
+}
+
 export function IconGrid(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>
