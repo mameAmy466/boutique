@@ -84,7 +84,7 @@ export function ShopsPage() {
     <>
       <div className="page-header">
         <div className="page-header-title">
-          <div className="page-icon">
+          <div className="page-icon cat-blue">
             <IconShop />
           </div>
           <div>

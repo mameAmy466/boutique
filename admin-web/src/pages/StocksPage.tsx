@@ -185,7 +185,7 @@ export function StocksPage() {
     <>
       <div className="page-header">
         <div className="page-header-title">
-          <div className="page-icon">
+          <div className="page-icon cat-aqua">
             <IconBox />
           </div>
           <div>

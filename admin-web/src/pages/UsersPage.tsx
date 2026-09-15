@@ -92,7 +92,7 @@ export function UsersPage() {
     <>
       <div className="page-header">
         <div className="page-header-title">
-          <div className="page-icon">
+          <div className="page-icon cat-violet">
             <IconUsers />
           </div>
           <div>

@@ -113,7 +113,7 @@ export function SuppliersPage() {
     <>
       <div className="page-header">
         <div className="page-header-title">
-          <div className="page-icon">
+          <div className="page-icon cat-blue">
             <IconTruck />
           </div>
           <div>

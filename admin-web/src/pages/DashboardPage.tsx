@@ -83,21 +83,21 @@ export function DashboardPage() {
               <div className="label">Aujourd'hui</div>
               <div className="value">{formatMoney(data.revenue.today)}</div>
             </Link>
-            <Link to="/sales" className="tile">
+            <Link to="/sales" className="tile cat-blue">
               <div className="tile-icon">
                 <IconCoin />
               </div>
               <div className="label">Cette semaine</div>
               <div className="value">{formatMoney(data.revenue.this_week)}</div>
             </Link>
-            <Link to="/sales" className="tile">
+            <Link to="/sales" className="tile cat-blue">
               <div className="tile-icon">
                 <IconCoin />
               </div>
               <div className="label">Ce mois</div>
               <div className="value">{formatMoney(data.revenue.this_month)}</div>
             </Link>
-            <Link to="/sales" className="tile">
+            <Link to="/sales" className="tile cat-blue">
               <div className="tile-icon">
                 <IconCoin />
               </div>
@@ -115,7 +115,7 @@ export function DashboardPage() {
               <div className="label">Bénéfice brut</div>
               <div className="value">{formatMoney(data.gross_profit)}</div>
             </Link>
-            <Link to="/stocks" className="tile">
+            <Link to="/stocks" className="tile cat-aqua">
               <div className="tile-icon">
                 <IconBox />
               </div>
@@ -129,7 +129,7 @@ export function DashboardPage() {
               <div className="label">Lots en rupture</div>
               <div className="value">{data.stock.out_of_stock_batches}</div>
             </Link>
-            <Link to="/sales" className="tile">
+            <Link to="/sales" className="tile cat-blue">
               <div className="tile-icon">
                 <IconRegister />
               </div>
@@ -137,7 +137,7 @@ export function DashboardPage() {
               <div className="value">{data.cash_sessions.open}</div>
             </Link>
             {data.shops && (
-              <Link to="/shops" className="tile">
+              <Link to="/shops" className="tile cat-violet">
                 <div className="tile-icon">
                   <IconShop />
                 </div>
