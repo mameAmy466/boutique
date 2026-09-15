@@ -4,6 +4,7 @@ import type { Paginated, Shop, StockMovement } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../lib/format';
 import { STOCK_MOVEMENT_BADGE as TYPE_BADGE, STOCK_MOVEMENT_LABEL as TYPE_LABEL } from '../lib/stockMovements';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { IconAudit } from '../components/DashboardIcons';
 
 export function AuditPage() {
@@ -38,6 +39,7 @@ export function AuditPage() {
 
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Administration' }, { label: 'Audit' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-violet">

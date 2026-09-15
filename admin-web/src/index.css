@@ -204,6 +204,71 @@ h3 {
   opacity: 1;
 }
 
+.nav-group {
+  display: flex;
+  flex-direction: column;
+}
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.nav-group-header:hover {
+  color: var(--ink);
+}
+.nav-group-header svg:first-child {
+  opacity: 0.85;
+}
+.nav-group-header span {
+  flex: 1;
+  text-align: left;
+}
+.nav-group-chevron {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  transition: transform 0.15s ease;
+}
+.nav-group-chevron.open {
+  transform: rotate(180deg);
+}
+.nav-group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
+@media (min-width: 781px) {
+  .nav-group.collapsed .nav-group-children {
+    display: none;
+  }
+}
+@media (max-width: 780px) {
+  .nav-group {
+    display: contents;
+  }
+  .nav-group-header {
+    display: none;
+  }
+  .nav-group-children {
+    padding-left: 0;
+    display: contents;
+  }
+}
+
 .btn:focus-visible,
 .nav-link:focus-visible,
 .field input:focus-visible,
@@ -1312,4 +1377,122 @@ tbody tr:hover {
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
+}
+
+/* ---------- Breadcrumb ---------- */
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+.breadcrumb-item a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.breadcrumb-item a:hover {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}
+.breadcrumb-item:last-child span {
+  color: var(--ink);
+  font-weight: 600;
+}
+.breadcrumb-sep {
+  margin-left: 6px;
+  color: var(--border);
+}
+
+/* ---------- List toolbar (search / filters / export) ---------- */
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.list-toolbar input[type='text'],
+.list-toolbar input[type='search'] {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+.list-toolbar select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.list-toolbar .btn {
+  margin-left: auto;
+}
+@media (max-width: 680px) {
+  .list-toolbar .btn {
+    margin-left: 0;
+  }
+}
+
+/* ---------- Pager ---------- */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Drawer ---------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 22, 0.5);
+  backdrop-filter: blur(1.5px);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 20;
+}
+.drawer {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 8px rgba(11, 15, 20, 0.08), -24px 0 48px -16px rgba(11, 15, 20, 0.28);
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  animation: drawer-in 0.18s ease-out;
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.drawer .modal-head {
+  padding: 20px 22px;
+  margin-bottom: 0;
+}
+.drawer-body {
+  padding: 4px 22px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+@media (max-width: 560px) {
+  .drawer {
+    max-width: 100%;
+  }
 }

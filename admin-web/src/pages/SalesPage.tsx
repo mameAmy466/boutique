@@ -1,9 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { api, ApiError } from '../api/client';
-import type { CashRegister, CashSession, PaymentMethod, ProductBatch, Sale, Shop } from '../api/types';
+import type { CashRegister, CashSession, Paginated, PaymentMethod, ProductBatch, Sale, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { Drawer } from '../components/Drawer';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { Pager } from '../components/Pager';
 import { InvoiceReceipt } from '../components/InvoiceReceipt';
+import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
 import { IconRegister } from '../components/DashboardIcons';
 
@@ -44,8 +48,21 @@ export function SalesPage() {
   const isSuperAdmin = user?.role?.slug === 'super_admin';
 
   const [sales, setSales] = useState<Sale[]>([]);
+  const [salesMeta, setSalesMeta] = useState<{ current_page: number; last_page: number; total: number }>({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+
+  const [viewSale, setViewSale] = useState<Sale | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   const [showNew, setShowNew] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -71,14 +88,50 @@ export function SalesPage() {
 
   function loadSales() {
     setLoading(true);
+    const params = new URLSearchParams({ page: String(page) });
+    if (search.trim()) params.set('search', search.trim());
+    if (paymentFilter) params.set('payment_method', paymentFilter);
+    if (statusFilter) params.set('status', statusFilter);
     api
-      .get<{ data: Sale[] }>('/sales')
-      .then((res) => setSales(res.data))
+      .get<Paginated<Sale>>(`/sales?${params.toString()}`)
+      .then((res) => {
+        setSales(res.data);
+        setSalesMeta({ current_page: res.current_page, last_page: res.last_page, total: res.total });
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Erreur de chargement.'))
       .finally(() => setLoading(false));
   }
 
-  useEffect(loadSales, []);
+  useEffect(loadSales, [page, search, paymentFilter, statusFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, paymentFilter, statusFilter]);
+
+  function openSaleDetail(saleId: number) {
+    setViewLoading(true);
+    setViewSale(null);
+    api
+      .get<Sale>(`/sales/${saleId}`)
+      .then(setViewSale)
+      .finally(() => setViewLoading(false));
+  }
+
+  function handleExport() {
+    exportToCsv(
+      'ventes.csv',
+      sales.map((s) => ({
+        numero: s.sale_number,
+        boutique: shops.find((sh) => sh.id === s.shop_id)?.name ?? '',
+        vendeur: s.user?.name ?? '',
+        paiement: PAYMENT_LABEL[s.payment_method],
+        total: s.total,
+        statut: STATUS_LABEL[s.status],
+        facture: s.invoice?.invoice_number ?? '',
+        date: s.created_at,
+      })),
+    );
+  }
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -234,6 +287,7 @@ export function SalesPage() {
 
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Ventes & Caisses' }, { label: 'Ventes' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon">
@@ -241,7 +295,7 @@ export function SalesPage() {
           </div>
           <div>
             <h1>Ventes</h1>
-            <p>{sales.length} vente{sales.length > 1 ? 's' : ''} récente{sales.length > 1 ? 's' : ''}</p>
+            <p>{salesMeta.total} vente{salesMeta.total > 1 ? 's' : ''} au total</p>
           </div>
         </div>
         <button className="btn btn-primary" onClick={() => setShowNew(true)}>
@@ -250,6 +304,34 @@ export function SalesPage() {
       </div>
 
       {error && <div className="alert error">{error}</div>}
+
+      <div className="list-toolbar">
+        <input
+          type="text"
+          placeholder="Rechercher par n° de vente ou client…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}>
+          <option value="">Tous paiements</option>
+          {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Tous statuts</option>
+          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={sales.length === 0}>
+          ⬇️ Exporter CSV
+        </button>
+      </div>
 
       <div className="table-wrap table-scroll cards-sm">
         <table>
@@ -263,17 +345,18 @@ export function SalesPage() {
               <th>Statut</th>
               <th>Facture</th>
               <th>Date</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 8 : 7}>Chargement…</td>
+                <td colSpan={isSuperAdmin ? 9 : 8}>Chargement…</td>
               </tr>
             )}
             {!loading && sales.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 8 : 7}>Aucune vente enregistrée.</td>
+                <td colSpan={isSuperAdmin ? 9 : 8}>Aucune vente ne correspond.</td>
               </tr>
             )}
             {sales.map((s) => (
@@ -290,11 +373,17 @@ export function SalesPage() {
                 </td>
                 <td className="mono" data-label="Facture">{s.invoice?.invoice_number ?? '—'}</td>
                 <td data-label="Date">{formatDate(s.created_at)}</td>
+                <td data-label="">
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => openSaleDetail(s.id)}>
+                    👁️ Voir
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <Pager page={salesMeta.current_page} lastPage={salesMeta.last_page} total={salesMeta.total} onChange={setPage} />
 
       {showNew && (
         <Modal title={completedSale ? 'Vente enregistrée' : 'Nouvelle vente'} onClose={closeSaleModal}>
@@ -494,6 +583,22 @@ export function SalesPage() {
             onClose={() => setShowCamera(false)}
           />
         </Suspense>
+      )}
+
+      {(viewSale || viewLoading) && (
+        <Drawer title="Détail de la vente" onClose={() => setViewSale(null)}>
+          {viewLoading && <p className="hint">Chargement…</p>}
+          {viewSale && (
+            <>
+              <InvoiceReceipt sale={viewSale} shop={shops.find((s) => s.id === viewSale.shop_id) ?? user?.shop ?? null} />
+              <div className="form-actions" style={{ marginTop: 16, justifyContent: 'center' }}>
+                <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+                  🖨️ Imprimer
+                </button>
+              </div>
+            </>
+          )}
+        </Drawer>
       )}
     </>
   );

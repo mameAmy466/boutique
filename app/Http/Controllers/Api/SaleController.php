@@ -25,7 +25,23 @@ class SaleController extends Controller
             $query->where('shop_id', $request->integer('shop_id'));
         }
 
-        return response()->json($query->latest()->paginate(50));
+        if ($request->filled('search')) {
+            $needle = $request->string('search');
+            $query->where(function ($q) use ($needle) {
+                $q->where('sale_number', 'like', "%{$needle}%")
+                    ->orWhere('customer_name', 'like', "%{$needle}%");
+            });
+        }
+
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->string('payment_method'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        return response()->json($query->latest()->paginate(50)->withQueryString());
     }
 
     public function store(Request $request)

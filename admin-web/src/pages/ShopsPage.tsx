@@ -3,6 +3,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { formatMoney } from '../lib/format';
 import { IconShop } from '../components/DashboardIcons';
 
@@ -82,6 +83,7 @@ export function ShopsPage() {
 
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Administration' }, { label: 'Boutiques' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-blue">

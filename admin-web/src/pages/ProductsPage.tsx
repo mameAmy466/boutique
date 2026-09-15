@@ -1,9 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
 import type { Category, Product, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { Pager } from '../components/Pager';
+import { exportToCsv } from '../lib/csv';
 import { IconTag } from '../components/DashboardIcons';
+
+const PAGE_SIZE = 20;
 
 function emptyForm() {
   return {
@@ -35,6 +40,11 @@ export function ProductsPage() {
 
   const [newCategory, setNewCategory] = useState('');
   const [newSupplier, setNewSupplier] = useState('');
+
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
 
   function loadAll() {
     setLoading(true);
@@ -98,8 +108,42 @@ export function ProductsPage() {
   const categoryName = (id: number | null) => categories.find((c) => c.id === id)?.name ?? '—';
   const supplierName = (id: number | null) => suppliers.find((s) => s.id === id)?.name ?? '—';
 
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return products.filter((p) => {
+      if (needle && !p.name.toLowerCase().includes(needle) && !p.reference.toLowerCase().includes(needle)) return false;
+      if (categoryFilter && String(p.category_id) !== categoryFilter) return false;
+      if (statusFilter && p.status !== statusFilter) return false;
+      return true;
+    });
+  }, [products, search, categoryFilter, statusFilter]);
+
+  const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryFilter, statusFilter]);
+
+  function handleExport() {
+    exportToCsv(
+      'produits.csv',
+      filtered.map((p) => ({
+        reference: p.reference,
+        nom: p.name,
+        marque: p.brand ?? '',
+        categorie: p.category?.name ?? categoryName(p.category_id),
+        fournisseur: p.supplier?.name ?? supplierName(p.supplier_id),
+        unite: p.unit,
+        seuil_min: p.min_stock,
+        statut: p.status,
+      })),
+    );
+  }
+
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Stocks & Produits' }, { label: 'Produits' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-aqua">
@@ -118,6 +162,31 @@ export function ProductsPage() {
       </div>
 
       {error && <div className="alert error">{error}</div>}
+
+      <div className="list-toolbar">
+        <input
+          type="text"
+          placeholder="Rechercher par nom ou référence…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="">Toutes catégories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Tous statuts</option>
+          <option value="active">Actif</option>
+          <option value="inactive">Inactif</option>
+        </select>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
+          ⬇️ Exporter CSV
+        </button>
+      </div>
 
       <div className="table-wrap table-scroll cards-sm">
         <table>
@@ -138,12 +207,12 @@ export function ProductsPage() {
                 <td colSpan={7}>Chargement…</td>
               </tr>
             )}
-            {!loading && products.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={7}>Aucun produit pour le moment.</td>
+                <td colSpan={7}>Aucun produit ne correspond.</td>
               </tr>
             )}
-            {products.map((p) => (
+            {pageItems.map((p) => (
               <tr key={p.id}>
                 <td className="mono" data-label="Référence">{p.reference}</td>
                 <td data-label="Nom">{p.name}</td>
@@ -157,6 +226,7 @@ export function ProductsPage() {
           </tbody>
         </table>
       </div>
+      <Pager page={page} lastPage={lastPage} total={filtered.length} onChange={setPage} />
 
       {showCreate && (
         <Modal title="Nouveau produit" onClose={() => setShowCreate(false)}>

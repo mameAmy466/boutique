@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { ProductBatch } from '../api/types';
 import { formatMoney } from '../lib/format';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { IconClipboard } from '../components/DashboardIcons';
 
 interface ShopSummary {
@@ -92,6 +93,7 @@ export function InventoryPage() {
 
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Administration' }, { label: 'Inventaire' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-aqua">

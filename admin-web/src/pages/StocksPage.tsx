@@ -5,8 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { BatchCodeModal } from '../components/BatchCodeModal';
 import { ReceptionVoucherModal } from '../components/ReceptionVoucherModal';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { Pager } from '../components/Pager';
+import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
 import { IconBox } from '../components/DashboardIcons';
+
+const PAGE_SIZE = 20;
 
 function emptyForm(defaultShopId: string) {
   return {
@@ -59,6 +64,11 @@ export function StocksPage() {
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [shopFilter, setShopFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
 
   function loadAll() {
     setLoading(true);
@@ -181,8 +191,49 @@ export function StocksPage() {
     }
   }
 
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return batches.filter((b) => {
+      if (
+        needle &&
+        !b.batch_code.toLowerCase().includes(needle) &&
+        !(b.product?.name ?? '').toLowerCase().includes(needle)
+      )
+        return false;
+      if (shopFilter && String(b.shop_id) !== shopFilter) return false;
+      if (statusFilter === 'rupture' && b.quantity_available !== 0) return false;
+      if (statusFilter === 'faible' && !(b.quantity_available > 0 && b.quantity_available <= 5)) return false;
+      return true;
+    });
+  }, [batches, search, shopFilter, statusFilter]);
+
+  const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, shopFilter, statusFilter]);
+
+  function handleExport() {
+    exportToCsv(
+      'stock.csv',
+      filtered.map((b) => ({
+        code_lot: b.batch_code,
+        produit: b.product?.name ?? '',
+        boutique: b.shop?.name ?? '',
+        fournisseur: b.supplier?.name ?? '',
+        cout_de_revient: b.cost_price,
+        prix_minimum: b.min_price,
+        disponible: b.quantity_available,
+        recu_le: b.received_at,
+        recu_par: b.received_by_user?.name ?? '',
+      })),
+    );
+  }
+
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Stocks & Produits' }, { label: 'Stock' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-aqua">
@@ -202,6 +253,33 @@ export function StocksPage() {
 
       {error && <div className="alert error">{error}</div>}
       {deleteError && <div className="alert error">{deleteError}</div>}
+
+      <div className="list-toolbar">
+        <input
+          type="text"
+          placeholder="Rechercher par lot ou produit…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {isSuperAdmin && (
+          <select value={shopFilter} onChange={(e) => setShopFilter(e.target.value)}>
+            <option value="">Toutes les boutiques</option>
+            {shops.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Tous statuts</option>
+          <option value="rupture">En rupture</option>
+          <option value="faible">Stock faible</option>
+        </select>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
+          ⬇️ Exporter CSV
+        </button>
+      </div>
 
       <div className="table-wrap table-scroll cards-sm">
         <table>
@@ -225,12 +303,12 @@ export function StocksPage() {
                 <td colSpan={isSuperAdmin ? 10 : 9}>Chargement…</td>
               </tr>
             )}
-            {!loading && batches.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 10 : 9}>Aucun lot en stock pour le moment.</td>
+                <td colSpan={isSuperAdmin ? 10 : 9}>Aucun lot ne correspond.</td>
               </tr>
             )}
-            {batches.map((b) => (
+            {pageItems.map((b) => (
               <tr key={b.id}>
                 <td className="mono" data-label="Code lot">{b.batch_code}</td>
                 <td data-label="Produit">{b.product?.name ?? `#${b.product_id}`}</td>
@@ -276,6 +354,7 @@ export function StocksPage() {
           </tbody>
         </table>
       </div>
+      <Pager page={page} lastPage={lastPage} total={filtered.length} onChange={setPage} />
 
       {showReceive && (
         <Modal title="Réceptionner un lot" onClose={() => setShowReceive(false)}>

@@ -3,6 +3,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { Role, Shop, User } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { IconUsers } from '../components/DashboardIcons';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -90,6 +91,7 @@ export function UsersPage() {
 
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Administration' }, { label: 'Utilisateurs' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-violet">

@@ -2,12 +2,14 @@ import { NavLink, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from './Logo';
 import { TopBar } from './TopBar';
+import { NavGroup, type NavGroupItem } from './NavGroup';
 import {
   IconAudit,
   IconBox,
   IconClipboard,
   IconGrid,
   IconRegister,
+  IconSettings,
   IconShop,
   IconTag,
   IconTruck,
@@ -25,6 +27,21 @@ export function ProtectedLayout() {
     return <Navigate to="/login" replace />;
   }
 
+  const isAdmin = user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique';
+  const isSuperAdmin = user.role?.slug === 'super_admin';
+
+  const stockProduits: NavGroupItem[] = [
+    { to: '/products', label: 'Produits', icon: <IconTag /> },
+    { to: '/stocks', label: 'Stock', icon: <IconBox /> },
+  ];
+
+  const adminItems: NavGroupItem[] = [
+    { to: '/shops', label: 'Boutiques', icon: <IconShop /> },
+    ...(isAdmin ? [{ to: '/users', label: 'Utilisateurs', icon: <IconUsers /> }] : []),
+    ...(isAdmin ? [{ to: '/audit', label: 'Audit', icon: <IconAudit /> }] : []),
+    ...(isSuperAdmin ? [{ to: '/inventory', label: 'Inventaire', icon: <IconClipboard /> }] : []),
+  ];
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -36,36 +53,24 @@ export function ProtectedLayout() {
         <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
           <IconGrid /> Tableau de bord
         </NavLink>
-        <NavLink to="/shops" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          <IconShop /> Boutiques
-        </NavLink>
-        {(user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique') && (
-          <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <IconUsers /> Utilisateurs
-          </NavLink>
-        )}
-        <NavLink to="/products" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          <IconTag /> Produits
-        </NavLink>
-        <NavLink to="/suppliers" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          <IconTruck /> Fournisseurs
-        </NavLink>
-        <NavLink to="/stocks" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          <IconBox /> Stock
-        </NavLink>
-        <NavLink to="/sales" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          <IconRegister /> Ventes
-        </NavLink>
-        {(user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique') && (
-          <NavLink to="/audit" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <IconAudit /> Audit
-          </NavLink>
-        )}
-        {user.role?.slug === 'super_admin' && (
-          <NavLink to="/inventory" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <IconClipboard /> Inventaire
-          </NavLink>
-        )}
+
+        <NavGroup
+          id="sales"
+          label="Ventes & Caisses"
+          icon={<IconRegister />}
+          items={[{ to: '/sales', label: 'Ventes', icon: <IconRegister /> }]}
+        />
+
+        <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />
+
+        <NavGroup
+          id="partners"
+          label="Tiers"
+          icon={<IconTruck />}
+          items={[{ to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> }]}
+        />
+
+        <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
       </aside>
 
       <div className="main-col">

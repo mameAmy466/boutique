@@ -3,6 +3,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { IconTruck } from '../components/DashboardIcons';
 
 function emptyForm() {
@@ -111,6 +112,7 @@ export function SuppliersPage() {
 
   return (
     <>
+      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Tiers' }, { label: 'Fournisseurs' }]} />
       <div className="page-header">
         <div className="page-header-title">
           <div className="page-icon cat-blue">
