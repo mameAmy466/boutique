@@ -130,6 +130,8 @@ export interface CashSession {
   status: 'open' | 'closed';
   cash_register?: CashRegister & { shop?: Shop };
   user?: User;
+  sales_count?: number;
+  sales_sum_total?: string | null;
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'wave' | 'orange_money' | 'free_money' | 'transfer' | 'other';

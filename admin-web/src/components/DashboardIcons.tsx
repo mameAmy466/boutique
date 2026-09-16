@@ -142,6 +142,16 @@ export function IconGrid(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconCashDrawer(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <rect x="2.5" y="5" width="15" height="10.5" rx="1.4" />
+      <path d="M2.5 10.2h4.2l1 1.6h4.6l1-1.6h4.2" />
+      <circle cx="10" cy="8.3" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconSearch(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>

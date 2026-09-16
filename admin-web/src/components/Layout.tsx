@@ -6,6 +6,7 @@ import { NavGroup, type NavGroupItem } from './NavGroup';
 import {
   IconAudit,
   IconBox,
+  IconCashDrawer,
   IconClipboard,
   IconGrid,
   IconRegister,
@@ -58,7 +59,10 @@ export function ProtectedLayout() {
           id="sales"
           label="Ventes & Caisses"
           icon={<IconRegister />}
-          items={[{ to: '/sales', label: 'Ventes', icon: <IconRegister /> }]}
+          items={[
+            { to: '/sales', label: 'Ventes', icon: <IconRegister /> },
+            { to: '/cash-sessions', label: 'Caisses', icon: <IconCashDrawer /> },
+          ]}
         />
 
         <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />

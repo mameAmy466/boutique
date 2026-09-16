@@ -16,10 +16,15 @@ class CashSessionController extends Controller
     {
         $actor = $request->user();
 
-        $query = CashSession::query()->with(['cashRegister.shop', 'user']);
+        $query = CashSession::query()
+            ->with(['cashRegister.shop', 'user'])
+            ->withCount('sales')
+            ->withSum('sales', 'total');
 
         if (! $actor->isSuperAdmin()) {
             $query->whereHas('cashRegister', fn ($q) => $q->where('shop_id', $actor->shop_id));
+        } elseif ($request->filled('shop_id')) {
+            $query->whereHas('cashRegister', fn ($q) => $q->where('shop_id', $request->integer('shop_id')));
         }
 
         return response()->json($query->latest()->get());
