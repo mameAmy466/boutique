@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from './Logo';
@@ -9,6 +10,7 @@ import {
   IconBox,
   IconCashDrawer,
   IconClipboard,
+  IconClose,
   IconGrid,
   IconRegister,
   IconSettings,
@@ -22,6 +24,34 @@ export function ProtectedLayout() {
   const { user, loading } = useAuth();
   const location = useLocation();
   const isDashboard = location.pathname === '/';
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1024px)');
+    const onChange = () => {
+      if (!mq.matches) setMenuOpen(false);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   if (loading) {
     return <div className="spinner-line" style={{ padding: 40 }}>Chargement…</div>;
@@ -49,11 +79,20 @@ export function ProtectedLayout() {
   ];
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell${menuOpen ? ' nav-open' : ''}`}>
+      <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      <aside className="sidebar" id="app-nav">
         <div className="brand">
           <Logo />
           Boutique
+          <button
+            type="button"
+            className="icon-btn sidebar-close"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Fermer le menu"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
@@ -91,6 +130,8 @@ export function ProtectedLayout() {
 
       <div className="main-col">
         <TopBar
+          onMenuClick={() => setMenuOpen(true)}
+          menuOpen={menuOpen}
           lead={
             isDashboard ? (
               <div>
