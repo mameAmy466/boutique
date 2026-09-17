@@ -31,6 +31,9 @@ class Sale extends Model
         'total',
         'payment_method',
         'status',
+        'cancellation_reason',
+        'cancelled_by',
+        'cancelled_at',
     ];
 
     protected function casts(): array
@@ -39,7 +42,19 @@ class Sale extends Model
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
+            'cancelled_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Named cancelledByUser (not cancelledBy) so the relation's snake-cased
+     * JSON key ("cancelled_by_user") never collides with the cancelled_by
+     * foreign key column when both are serialized on the same model — the
+     * same pitfall already hit and fixed on ProductBatch::receivedByUser().
+     */
+    public function cancelledByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function shop(): BelongsTo

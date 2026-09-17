@@ -46,6 +46,7 @@ interface Line {
 export function SalesPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
+  const isAdmin = isSuperAdmin || user?.role?.slug === 'admin_boutique';
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [salesMeta, setSalesMeta] = useState<{ current_page: number; last_page: number; total: number }>({
@@ -73,11 +74,17 @@ export function SalesPage() {
   const [shopId, setShopId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [customerName, setCustomerName] = useState('');
+  const [discount, setDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
   const [openingAmount, setOpeningAmount] = useState('0');
   const [registerId, setRegisterId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const [scanInput, setScanInput] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
@@ -111,10 +118,35 @@ export function SalesPage() {
   function openSaleDetail(saleId: number) {
     setViewLoading(true);
     setViewSale(null);
+    setCancelling(false);
+    setCancelReason('');
+    setCancelError(null);
     api
       .get<Sale>(`/sales/${saleId}`)
       .then(setViewSale)
       .finally(() => setViewLoading(false));
+  }
+
+  async function handleCancelSale() {
+    if (!viewSale) return;
+    if (cancelReason.trim().length < 3) {
+      setCancelError('Le motif doit contenir au moins 3 caractères.');
+      return;
+    }
+    setCancelError(null);
+    setCancelSubmitting(true);
+    try {
+      await api.post<Sale>(`/sales/${viewSale.id}/cancel`, { reason: cancelReason.trim() });
+      const detailed = await api.get<Sale>(`/sales/${viewSale.id}`);
+      setViewSale(detailed);
+      setCancelling(false);
+      setCancelReason('');
+      loadSales();
+    } catch (err) {
+      setCancelError(err instanceof ApiError ? err.message : 'Erreur inattendue.');
+    } finally {
+      setCancelSubmitting(false);
+    }
   }
 
   function handleExport() {
@@ -154,10 +186,20 @@ export function SalesPage() {
     api.get<CashRegister[]>(`/cash-registers?shop_id=${shopId}`).then(setRegisters);
   }, [shopId]);
 
-  const total = useMemo(
+  const subtotal = useMemo(
     () => lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.unit_price || 0), 0),
     [lines],
   );
+  const totalCost = useMemo(
+    () =>
+      lines.reduce((sum, l) => {
+        const batch = batches.find((b) => b.id === Number(l.product_batch_id));
+        return batch ? sum + Number(batch.cost_price) * Number(l.quantity || 0) : sum;
+      }, 0),
+    [lines, batches],
+  );
+  const maxDiscount = Math.max(subtotal - totalCost, 0);
+  const total = Math.max(subtotal - Number(discount || 0), 0);
 
   function updateLine(index: number, patch: Partial<Line>) {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
@@ -254,6 +296,7 @@ export function SalesPage() {
         cash_session_id: openSession.id,
         payment_method: paymentMethod,
         customer_name: customerName || undefined,
+        discount: isAdmin ? Number(discount || 0) : undefined,
         items: lines
           .filter((l) => l.product_batch_id)
           .map((l) => ({
@@ -276,6 +319,7 @@ export function SalesPage() {
     setCompletedSale(null);
     setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
     setCustomerName('');
+    setDiscount('0');
   }
 
   function closeSaleModal() {
@@ -283,6 +327,7 @@ export function SalesPage() {
     setCompletedSale(null);
     setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
     setCustomerName('');
+    setDiscount('0');
   }
 
   return (
@@ -480,6 +525,19 @@ export function SalesPage() {
                   <label htmlFor="sale-customer">Client (optionnel)</label>
                   <input id="sale-customer" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                 </div>
+                {isAdmin && (
+                  <div className="field">
+                    <label htmlFor="sale-discount">Remise</label>
+                    <input
+                      id="sale-discount"
+                      type="number"
+                      min={0}
+                      value={discount}
+                      onChange={(e) => setDiscount(e.target.value)}
+                    />
+                    <p className="hint">Remise maximale autorisée : {formatMoney(maxDiscount)} (la vente ne peut jamais passer sous son coût total).</p>
+                  </div>
+                )}
               </div>
 
               <div className="section-title" style={{ marginTop: 0 }}>Articles</div>
@@ -555,7 +613,18 @@ export function SalesPage() {
               </button>
 
               <div className="alert success">
-                Total de la vente : <strong className="num">{formatMoney(total)}</strong>
+                {isAdmin && Number(discount || 0) > 0 ? (
+                  <>
+                    Sous-total : <span className="num">{formatMoney(subtotal)}</span> — Remise :{' '}
+                    <span className="num">-{formatMoney(discount)}</span>
+                    <br />
+                    Total net : <strong className="num">{formatMoney(total)}</strong>
+                  </>
+                ) : (
+                  <>
+                    Total de la vente : <strong className="num">{formatMoney(total)}</strong>
+                  </>
+                )}
               </div>
 
               <div className="form-actions">
@@ -596,6 +665,68 @@ export function SalesPage() {
                   🖨️ Imprimer
                 </button>
               </div>
+
+              {viewSale.status === 'cancelled' && (
+                <div className="alert error" style={{ marginTop: 16 }}>
+                  <strong>Vente annulée</strong>
+                  <div>Motif : {viewSale.cancellation_reason}</div>
+                  {viewSale.cancelled_by_user && <div>Par : {viewSale.cancelled_by_user.name}</div>}
+                  {viewSale.cancelled_at && <div>Le : {formatDate(viewSale.cancelled_at)}</div>}
+                </div>
+              )}
+
+              {isAdmin && viewSale.status === 'completed' && (
+                <div className="card" style={{ marginTop: 16 }}>
+                  {!cancelling ? (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      onClick={() => {
+                        setCancelling(true);
+                        setCancelError(null);
+                        setCancelReason('');
+                      }}
+                    >
+                      🚫 Annuler la vente
+                    </button>
+                  ) : (
+                    <>
+                      <div className="field">
+                        <label htmlFor="cancel-reason">Motif de l'annulation</label>
+                        <textarea
+                          id="cancel-reason"
+                          rows={3}
+                          value={cancelReason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          placeholder="Ex : erreur de saisie, produit repris par le client…"
+                        />
+                      </div>
+                      {cancelError && <div className="alert error">{cancelError}</div>}
+                      <div className="form-actions">
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            setCancelling(false);
+                            setCancelReason('');
+                            setCancelError(null);
+                          }}
+                        >
+                          Retour
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={handleCancelSale}
+                          disabled={cancelSubmitting}
+                        >
+                          {cancelSubmitting ? 'Annulation…' : "Confirmer l'annulation"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
         </Drawer>

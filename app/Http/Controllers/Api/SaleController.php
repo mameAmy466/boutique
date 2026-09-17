@@ -89,14 +89,18 @@ class SaleController extends Controller
     {
         $this->authorize('view', $sale);
 
-        return response()->json($sale->load(['items.productBatch.product', 'invoice', 'user']));
+        return response()->json($sale->load(['items.productBatch.product', 'invoice', 'user', 'cancelledByUser']));
     }
 
     public function cancel(Request $request, Sale $sale)
     {
         $this->authorize('cancel', $sale);
 
-        $sale = $this->sales->cancelSale($sale, $request->user());
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $sale = $this->sales->cancelSale($sale, $request->user(), $data['reason']);
 
         return response()->json($sale);
     }

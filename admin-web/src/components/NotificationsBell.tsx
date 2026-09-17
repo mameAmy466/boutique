@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { Product, ProductBatch } from '../api/types';
+import type { CashSession, Product, ProductBatch } from '../api/types';
+import { useAuth } from '../context/AuthContext';
 import { IconBell } from './DashboardIcons';
+import { CASH_DISCREPANCY_THRESHOLD, LONG_OPEN_SESSION_HOURS } from '../lib/cashAlerts';
+import { formatMoney } from '../lib/format';
 
-interface LowStockAlert {
-  product: Product;
-  available: number;
+interface AlertItem {
+  id: string;
+  tone: 'bad' | 'warn';
+  badge: string;
+  desc: string;
+  meta: string;
+  to: string;
 }
 
-function computeAlerts(batches: ProductBatch[]): LowStockAlert[] {
-  const byProduct = new Map<number, LowStockAlert>();
+function computeLowStockAlerts(batches: ProductBatch[]): AlertItem[] {
+  const byProduct = new Map<number, { product: Product; available: number }>();
   for (const b of batches) {
     if (!b.product) continue;
     const entry = byProduct.get(b.product_id) ?? { product: b.product, available: 0 };
@@ -19,20 +26,75 @@ function computeAlerts(batches: ProductBatch[]): LowStockAlert[] {
   }
   return [...byProduct.values()]
     .filter((a) => a.available <= a.product.min_stock)
-    .sort((a, b) => a.available - b.available);
+    .sort((a, b) => a.available - b.available)
+    .map((a) => ({
+      id: `stock-${a.product.id}`,
+      tone: a.available === 0 ? 'bad' : 'warn',
+      badge: a.available === 0 ? 'Rupture' : 'Faible',
+      desc: a.product.name,
+      meta: `${a.available} / min. ${a.product.min_stock}`,
+      to: '/stocks',
+    }));
+}
+
+function computeCashAlerts(sessions: CashSession[]): AlertItem[] {
+  const alerts: AlertItem[] = [];
+  const now = Date.now();
+
+  for (const s of sessions) {
+    if (s.status === 'closed' && s.difference !== null) {
+      const diff = Number(s.difference);
+      if (Math.abs(diff) >= CASH_DISCREPANCY_THRESHOLD) {
+        alerts.push({
+          id: `diff-${s.id}`,
+          tone: 'bad',
+          badge: 'Écart caisse',
+          desc: s.user?.name ?? `Session #${s.id}`,
+          meta: formatMoney(diff),
+          to: '/cash-discrepancies',
+        });
+      }
+    }
+    if (s.status === 'open') {
+      const openedHours = (now - new Date(s.opened_at).getTime()) / 3_600_000;
+      if (openedHours >= LONG_OPEN_SESSION_HOURS) {
+        alerts.push({
+          id: `long-${s.id}`,
+          tone: 'warn',
+          badge: 'Caisse ouverte',
+          desc: s.user?.name ?? `Session #${s.id}`,
+          meta: `depuis ${Math.floor(openedHours / 24)} j`,
+          to: '/cash-sessions',
+        });
+      }
+    }
+  }
+
+  return alerts.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'bad' ? -1 : 1));
 }
 
 export function NotificationsBell() {
-  const [alerts, setAlerts] = useState<LowStockAlert[]>([]);
+  const { user } = useAuth();
+  const isAdmin = user?.role?.slug === 'super_admin' || user?.role?.slug === 'admin_boutique';
+
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
       .get<ProductBatch[]>('/stocks')
-      .then((batches) => setAlerts(computeAlerts(batches)))
+      .then((batches) => setAlerts((prev) => [...computeLowStockAlerts(batches), ...prev.filter((a) => !a.id.startsWith('stock-'))]))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api
+      .get<CashSession[]>('/cash-sessions')
+      .then((sessions) => setAlerts((prev) => [...prev.filter((a) => a.id.startsWith('stock-')), ...computeCashAlerts(sessions)]))
+      .catch(() => {});
+  }, [isAdmin]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -56,20 +118,15 @@ export function NotificationsBell() {
       </button>
       {open && (
         <div className="dropdown-menu notif-dropdown">
-          <div className="dropdown-title">Alertes stock</div>
+          <div className="dropdown-title">Alertes</div>
           {alerts.length === 0 && <p className="hint" style={{ padding: '4px 14px 12px' }}>Aucune alerte pour le moment.</p>}
           {alerts.slice(0, 8).map((a) => (
-            <Link key={a.product.id} to="/stocks" className="notif-row" onClick={() => setOpen(false)}>
-              <span className={`badge ${a.available === 0 ? 'bad' : 'warn'}`}>{a.available === 0 ? 'Rupture' : 'Faible'}</span>
-              <span className="notif-desc">{a.product.name}</span>
-              <span className="notif-qty">{a.available} / min. {a.product.min_stock}</span>
+            <Link key={a.id} to={a.to} className="notif-row" onClick={() => setOpen(false)}>
+              <span className={`badge ${a.tone}`}>{a.badge}</span>
+              <span className="notif-desc">{a.desc}</span>
+              <span className="notif-qty">{a.meta}</span>
             </Link>
           ))}
-          {alerts.length > 0 && (
-            <Link to="/stocks" className="dropdown-footer-link" onClick={() => setOpen(false)}>
-              Voir le stock →
-            </Link>
-          )}
         </div>
       )}
     </div>

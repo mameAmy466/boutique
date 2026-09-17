@@ -169,9 +169,13 @@ export interface Sale {
   payment_method: PaymentMethod;
   status: 'completed' | 'cancelled' | 'returned' | 'partially_returned';
   created_at: string;
+  cancellation_reason?: string | null;
+  cancelled_by?: number | null;
+  cancelled_at?: string | null;
   items?: SaleItem[];
   invoice?: Invoice | null;
   user?: User;
+  cancelled_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 
 export interface Paginated<T> {

@@ -4,6 +4,7 @@ import { Logo } from './Logo';
 import { TopBar } from './TopBar';
 import { NavGroup, type NavGroupItem } from './NavGroup';
 import {
+  IconAlert,
   IconAudit,
   IconBox,
   IconCashDrawer,
@@ -40,6 +41,7 @@ export function ProtectedLayout() {
     { to: '/shops', label: 'Boutiques', icon: <IconShop /> },
     ...(isAdmin ? [{ to: '/users', label: 'Utilisateurs', icon: <IconUsers /> }] : []),
     ...(isAdmin ? [{ to: '/audit', label: 'Audit', icon: <IconAudit /> }] : []),
+    ...(isAdmin ? [{ to: '/cash-discrepancies', label: 'Écarts de caisse', icon: <IconAlert /> }] : []),
     ...(isSuperAdmin ? [{ to: '/inventory', label: 'Inventaire', icon: <IconClipboard /> }] : []),
   ];
 

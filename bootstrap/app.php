@@ -2,6 +2,7 @@
 
 use App\Exceptions\BatchInUseException;
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidDiscountException;
 use App\Exceptions\PriceBelowMinimumException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -45,6 +46,10 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (BatchInUseException $e, $request) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        });
+
+        $exceptions->render(function (InvalidDiscountException $e, $request) {
             return response()->json(['message' => $e->getMessage()], 422);
         });
     })->create();

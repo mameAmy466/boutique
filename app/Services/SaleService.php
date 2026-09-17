@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidDiscountException;
 use App\Exceptions\PriceBelowMinimumException;
 use App\Models\CashSession;
 use App\Models\ProductBatch;
@@ -12,6 +13,7 @@ use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class SaleService
 {
@@ -25,6 +27,7 @@ class SaleService
      *
      * @throws PriceBelowMinimumException
      * @throws InsufficientStockException
+     * @throws InvalidDiscountException
      */
     public function createSale(
         Shop $shop,
@@ -37,6 +40,7 @@ class SaleService
     ): Sale {
         return DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount) {
             $subtotal = 0;
+            $totalCost = 0;
             $lines = [];
 
             foreach ($items as $item) {
@@ -57,6 +61,7 @@ class SaleService
 
                 $lineTotal = round($unitPrice * $quantity, 2);
                 $subtotal += $lineTotal;
+                $totalCost += round((float) $batch->cost_price * $quantity, 2);
 
                 $lines[] = [
                     'batch' => $batch,
@@ -64,6 +69,25 @@ class SaleService
                     'unit_price' => $unitPrice,
                     'line_total' => $lineTotal,
                 ];
+            }
+
+            // A cashier must never grant a discount: only an admin can. And
+            // even for an admin, a discount may never push the sale below
+            // its total cost — the same "never sell at a loss" guarantee
+            // the per-item minimum price already enforces, extended to the
+            // whole sale so it can't be undone by discounting afterward.
+            if ($discount > 0) {
+                if ($cashier->isCashier()) {
+                    throw new InvalidDiscountException('Un caissier ne peut pas accorder de remise.');
+                }
+
+                $maxDiscount = round($subtotal - $totalCost, 2);
+                if ($discount > $maxDiscount) {
+                    throw new InvalidDiscountException(sprintf(
+                        'Remise trop élevée : maximum autorisé %.2f (la vente ne peut jamais passer sous son coût total).',
+                        max($maxDiscount, 0),
+                    ));
+                }
             }
 
             $total = round($subtotal - $discount, 2);
@@ -117,10 +141,14 @@ class SaleService
         });
     }
 
-    public function cancelSale(Sale $sale, User $actor): Sale
+    public function cancelSale(Sale $sale, User $actor, string $reason): Sale
     {
-        return DB::transaction(function () use ($sale, $actor) {
+        return DB::transaction(function () use ($sale, $actor, $reason) {
             $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
+
+            if ($sale->status !== Sale::STATUS_COMPLETED) {
+                throw new RuntimeException('Cette vente ne peut plus être annulée (déjà '.$sale->status.').');
+            }
 
             foreach ($sale->items as $item) {
                 $batch = ProductBatch::query()->lockForUpdate()->findOrFail($item->product_batch_id);
@@ -133,12 +161,17 @@ class SaleService
                     'quantity' => $item->quantity,
                     'reference_type' => Sale::class,
                     'reference_id' => $sale->id,
-                    'note' => 'Annulation de la vente '.$sale->sale_number,
+                    'note' => 'Annulation de la vente '.$sale->sale_number.' — '.$reason,
                     'user_id' => $actor->id,
                 ]);
             }
 
-            $sale->update(['status' => Sale::STATUS_CANCELLED]);
+            $sale->update([
+                'status' => Sale::STATUS_CANCELLED,
+                'cancellation_reason' => $reason,
+                'cancelled_by' => $actor->id,
+                'cancelled_at' => now(),
+            ]);
 
             return $sale;
         });
