@@ -32,43 +32,62 @@ export function LoginPage() {
 
   return (
     <div className="login-shell">
-      <div className="login-card card">
-        <div className="brand">
-          <Logo size={30} />
-          Boutique Admin
+      <div className="login-decor" aria-hidden="true">
+        <span className="login-shape login-shape-ring" />
+        <span className="login-shape login-shape-pill" />
+        <span className="login-shape login-shape-line" />
+        <span className="login-shape login-shape-arc" />
+        <span className="login-shape login-shape-dot" />
+      </div>
+
+      <div className="login-panel">
+        <div className="login-welcome">
+          <div className="login-brand">
+            <Logo size={36} />
+            <span>Boutique</span>
+          </div>
+          <h1>Bienvenue !</h1>
+          <p>
+            Accédez à l'interface d'administration du complexe commercial : ventes, stock, boutiques
+            et équipes, au même endroit.
+          </p>
         </div>
-        <h1>Connexion</h1>
-        <p className="sub">Interface d'administration du complexe commercial</p>
 
-        {error && <div className="alert error">{error}</div>}
+        <div className="login-form-card">
+          <h2>Connexion</h2>
 
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="email">Adresse e-mail</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="password">Mot de passe</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button className="btn btn-primary" type="submit" disabled={submitting}>
-            {submitting ? 'Connexion…' : 'Se connecter'}
-          </button>
-        </form>
+          {error && <div className="alert error">{error}</div>}
+
+          <form onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="email">Adresse e-mail</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="username"
+                placeholder="admin@boutique.test"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="password">Mot de passe</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <button className="login-submit" type="submit" disabled={submitting}>
+              {submitting ? 'Connexion…' : 'Se connecter'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

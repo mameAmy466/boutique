@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
 import type { Product, ProductBatch, Shop, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
@@ -8,8 +8,16 @@ import { ReceptionVoucherModal } from '../components/ReceptionVoucherModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Pager } from '../components/Pager';
 import { exportToCsv } from '../lib/csv';
-import { formatDate, formatMoney } from '../lib/format';
-import { IconBox } from '../components/DashboardIcons';
+import { formatDate, formatMoney, mediaUrl } from '../lib/format';
+import {
+  IconBox,
+  IconBarcode,
+  IconReceipt,
+  IconClipboard,
+  IconPencil,
+  IconTrash,
+  IconCamera,
+} from '../components/DashboardIcons';
 
 const PAGE_SIZE = 20;
 
@@ -69,6 +77,9 @@ export function StocksPage() {
   const [shopFilter, setShopFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [imageTargetId, setImageTargetId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   function loadAll() {
     setLoading(true);
@@ -191,6 +202,27 @@ export function StocksPage() {
     }
   }
 
+  function pickProductImage(productId: number) {
+    setImageTargetId(productId);
+    imageInputRef.current?.click();
+  }
+
+  async function handleProductImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const productId = imageTargetId;
+    e.target.value = '';
+    if (!file || !productId) return;
+    setDeleteError(null);
+    const body = new FormData();
+    body.append('image', file);
+    try {
+      await api.post(`/products/${productId}/image`, body);
+      loadAll();
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Impossible d'enregistrer l'image.");
+    }
+  }
+
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return batches.filter((b) => {
@@ -207,12 +239,49 @@ export function StocksPage() {
     });
   }, [batches, search, shopFilter, statusFilter]);
 
-  const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const productCards = useMemo(() => {
+    const map = new Map<
+      number,
+      { product: Product | undefined; batches: ProductBatch[]; qty: number }
+    >();
+    for (const batch of filtered) {
+      const current = map.get(batch.product_id) ?? { product: batch.product, batches: [], qty: 0 };
+      current.batches.push(batch);
+      current.qty += batch.quantity_available;
+      if (!current.product && batch.product) current.product = batch.product;
+        map.set(batch.product_id, current);
+    }
+    return [...map.entries()].map(([productId, value]) => ({
+      productId,
+      ...value,
+      minPrice: Math.min(...value.batches.map((batch) => Number(batch.min_price))),
+    }));
+  }, [filtered]);
+
+  const selectedProduct = productCards.find((card) => card.productId === selectedProductId) ?? null;
+  const catalogProduct = products.find((p) => p.id === selectedProductId) ?? selectedProduct?.product ?? null;
+
+  const visibleLots = useMemo(() => {
+    if (!selectedProductId) return filtered;
+    return filtered.filter((batch) => batch.product_id === selectedProductId);
+  }, [filtered, selectedProductId]);
+
+  const lastPage = Math.max(1, Math.ceil(visibleLots.length / PAGE_SIZE));
+  const pageItems = visibleLots.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     setPage(1);
-  }, [search, shopFilter, statusFilter]);
+  }, [search, shopFilter, statusFilter, selectedProductId]);
+
+  useEffect(() => {
+    if (productCards.length === 0) {
+      if (selectedProductId !== null) setSelectedProductId(null);
+      return;
+    }
+    if (!productCards.some((card) => card.productId === selectedProductId)) {
+      setSelectedProductId(productCards[0].productId);
+    }
+  }, [productCards, selectedProductId]);
 
   function handleExport() {
     exportToCsv(
@@ -234,127 +303,231 @@ export function StocksPage() {
   return (
     <>
       <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Stocks & Produits' }, { label: 'Stock' }]} />
-      <div className="page-header">
-        <div className="page-header-title">
-          <div className="page-icon cat-aqua">
-            <IconBox />
-          </div>
-          <div>
-            <h1>Stock</h1>
-            <p>{batches.length} lot{batches.length > 1 ? 's' : ''} en circulation</p>
-          </div>
-        </div>
-        {canReceive && (
-          <button className="btn btn-primary" onClick={() => setShowReceive(true)}>
-            + Réceptionner un lot
-          </button>
-        )}
-      </div>
-
       {error && <div className="alert error">{error}</div>}
       {deleteError && <div className="alert error">{deleteError}</div>}
 
-      <div className="list-toolbar">
-        <input
-          type="text"
-          placeholder="Rechercher par lot ou produit…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {isSuperAdmin && (
-          <select value={shopFilter} onChange={(e) => setShopFilter(e.target.value)}>
-            <option value="">Toutes les boutiques</option>
-            {shops.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        )}
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">Tous statuts</option>
-          <option value="rupture">En rupture</option>
-          <option value="faible">Stock faible</option>
-        </select>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
-          ⬇️ Exporter CSV
-        </button>
-      </div>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handleProductImage}
+      />
 
-      <div className="table-wrap table-scroll cards-sm">
-        <table>
-          <thead>
-            <tr>
-              <th>Code lot</th>
-              <th>Produit</th>
-              {isSuperAdmin && <th>Boutique</th>}
-              <th>Fournisseur</th>
-              <th>Coût de revient</th>
-              <th>Prix minimum</th>
-              <th>Disponible</th>
-              <th>Reçu le</th>
-              <th>Reçu par</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 10 : 9}>Chargement…</td>
-              </tr>
+      <div className="catalog-stage">
+        <div className="catalog-main">
+          <div className="catalog-heading">
+            <div>
+              <h1>Stock</h1>
+              <p>{batches.length} lot{batches.length > 1 ? 's' : ''} en circulation</p>
+            </div>
+            {canReceive && (
+              <button className="btn btn-primary" onClick={() => setShowReceive(true)}>
+                + Réceptionner un lot
+              </button>
             )}
-            {!loading && filtered.length === 0 && (
-              <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 10 : 9}>Aucun lot ne correspond.</td>
-              </tr>
-            )}
-            {pageItems.map((b) => (
-              <tr key={b.id}>
-                <td className="mono" data-label="Code lot">{b.batch_code}</td>
-                <td data-label="Produit">{b.product?.name ?? `#${b.product_id}`}</td>
-                {isSuperAdmin && <td data-label="Boutique">{b.shop?.name ?? `#${b.shop_id}`}</td>}
-                <td data-label="Fournisseur">{b.supplier?.name ?? '—'}</td>
-                <td className="num" data-label="Coût de revient">{formatMoney(b.cost_price)}</td>
-                <td className="num" data-label="Prix minimum">{formatMoney(b.min_price)}</td>
-                <td data-label="Disponible">
-                  <span className={`badge ${b.quantity_available === 0 ? 'bad' : b.quantity_available <= 5 ? 'warn' : 'ok'}`}>
-                    {b.quantity_available}
-                  </span>
-                </td>
-                <td data-label="Reçu le">{formatDate(b.received_at)}</td>
-                <td data-label="Reçu par">{b.received_by_user?.name ?? '—'}</td>
-                <td data-label="" className="row-actions">
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setCodeBatch(b)}>
-                    🏷️ Code
-                  </button>
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setVoucherBatch(b)}>
-                    🧾 Bon
-                  </button>
-                  {canReceive && (
-                    <>
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => openAdjust(b)}>
-                        📋 Ajuster
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => openEdit(b)}>
-                        ✏️ Modifier
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost danger"
-                        disabled={deletingId === b.id}
-                        onClick={() => handleDelete(b)}
-                      >
-                        🗑️ {deletingId === b.id ? '…' : 'Supprimer'}
-                      </button>
-                    </>
+          </div>
+
+          {loading && <div className="spinner-line">Chargement…</div>}
+
+          <div className="catalog-stats">
+            <div className="catalog-stat">
+              <span className="label">Lots</span>
+              <span className="value num">{filtered.length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Produits</span>
+              <span className="value num">{productCards.length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Rupture</span>
+              <span className="value num">{filtered.filter((b) => b.quantity_available === 0).length}</span>
+            </div>
+          </div>
+
+          <section className="catalog-history">
+            <h2>Lots en stock</h2>
+            <div className="list-toolbar">
+              <input
+                type="text"
+                placeholder="Rechercher un lot…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {isSuperAdmin && (
+                <select value={shopFilter} onChange={(e) => setShopFilter(e.target.value)}>
+                  <option value="">Toutes les boutiques</option>
+                  {shops.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">Tous statuts</option>
+                <option value="rupture">En rupture</option>
+                <option value="faible">Stock faible</option>
+              </select>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
+                ⬇️ CSV
+              </button>
+            </div>
+
+            <div className="table-wrap table-scroll cards-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code lot</th>
+                    <th>Produit</th>
+                    {isSuperAdmin && <th>Boutique</th>}
+                    <th>Fournisseur</th>
+                    <th>Coût</th>
+                    <th>Prix min.</th>
+                    <th>Dispo</th>
+                    <th>Reçu le</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!loading && visibleLots.length === 0 && (
+                    <tr className="empty-row">
+                      <td colSpan={isSuperAdmin ? 9 : 8}>Aucun lot ne correspond.</td>
+                    </tr>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {pageItems.map((b) => (
+                    <tr
+                      key={b.id}
+                      className={selectedProductId === b.product_id ? 'is-selected' : undefined}
+                      onClick={() => setSelectedProductId(b.product_id)}
+                    >
+                      <td className="mono" data-label="Code lot">{b.batch_code}</td>
+                      <td data-label="Produit">{b.product?.name ?? `#${b.product_id}`}</td>
+                      {isSuperAdmin && <td data-label="Boutique">{b.shop?.name ?? `#${b.shop_id}`}</td>}
+                      <td data-label="Fournisseur">{b.supplier?.name ?? '—'}</td>
+                      <td className="num" data-label="Coût">{formatMoney(b.cost_price)}</td>
+                      <td className="num" data-label="Prix min.">{formatMoney(b.min_price)}</td>
+                      <td data-label="Dispo">
+                        <span className={`badge ${b.quantity_available === 0 ? 'bad' : b.quantity_available <= 5 ? 'warn' : 'ok'}`}>
+                          {b.quantity_available}
+                        </span>
+                      </td>
+                      <td data-label="Reçu le">{formatDate(b.received_at)}</td>
+                      <td data-label="Actions" className="row-actions" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" className="btn btn-icon" onClick={() => setCodeBatch(b)} title="Code-barres" aria-label="Code-barres">
+                          <IconBarcode />
+                        </button>
+                        <button type="button" className="btn btn-icon" onClick={() => setVoucherBatch(b)} title="Bon de réception" aria-label="Bon de réception">
+                          <IconReceipt />
+                        </button>
+                        {canReceive && (
+                          <>
+                            <button type="button" className="btn btn-icon" onClick={() => openAdjust(b)} title="Ajuster" aria-label="Ajuster">
+                              <IconClipboard />
+                            </button>
+                            <button type="button" className="btn btn-icon" onClick={() => openEdit(b)} title="Modifier" aria-label="Modifier">
+                              <IconPencil />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-icon danger"
+                              disabled={deletingId === b.id}
+                              onClick={() => handleDelete(b)}
+                              title={deletingId === b.id ? 'Suppression…' : 'Supprimer'}
+                              aria-label={deletingId === b.id ? 'Suppression…' : 'Supprimer'}
+                            >
+                              <IconTrash />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pager page={page} lastPage={lastPage} total={visibleLots.length} onChange={setPage} />
+          </section>
+        </div>
+
+        <aside className="catalog-aside">
+          <h2>Fiche produit</h2>
+          {selectedProduct ? (
+            <>
+              <div className="catalog-aside-block">
+                <span className="label">Référence</span>
+                <div className="catalog-aside-box">{catalogProduct?.reference ?? 'Sans référence'}</div>
+              </div>
+              <div className="catalog-aside-block">
+                <span className="label">Catégorie</span>
+                <div className="catalog-aside-box">
+                  {catalogProduct?.category?.name ?? '—'}
+                  {catalogProduct?.brand ? ` · ${catalogProduct.brand}` : ''}
+                </div>
+              </div>
+              <div className="catalog-aside-product">
+                <div className="catalog-aside-thumb">
+                  {mediaUrl(selectedProduct.product?.image_url) ? (
+                    <img
+                      src={mediaUrl(selectedProduct.product?.image_url) ?? ''}
+                      alt={selectedProduct.product?.name ?? 'Produit'}
+                    />
+                  ) : (
+                    <div className="stock-card-placeholder">
+                      <IconBox />
+                    </div>
+                  )}
+                  {canReceive && (
+                    <button
+                      type="button"
+                      className="stock-card-photo"
+                      title="Photo du produit"
+                      aria-label="Photo du produit"
+                      onClick={() => pickProductImage(selectedProduct.productId)}
+                    >
+                      <IconCamera />
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <strong>{selectedProduct.product?.name ?? `Produit #${selectedProduct.productId}`}</strong>
+                  <span>
+                    {selectedProduct.batches.length} lot{selectedProduct.batches.length > 1 ? 's' : ''} · {catalogProduct?.unit ?? 'unité'}
+                  </span>
+                </div>
+              </div>
+              <div className="catalog-totals">
+                <div>
+                  <span>Stock total</span>
+                  <span className="num">{selectedProduct.qty}</span>
+                </div>
+                <div>
+                  <span>Seuil min.</span>
+                  <span className="num">{catalogProduct?.min_stock ?? '—'}</span>
+                </div>
+                <div className="total">
+                  <span>Prix min.</span>
+                  <span className="num">{Number.isFinite(selectedProduct.minPrice) ? formatMoney(selectedProduct.minPrice) : '—'}</span>
+                </div>
+              </div>
+              {canReceive && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setForm((current) => ({ ...current, product_id: String(selectedProduct.productId) }));
+                    setShowReceive(true);
+                  }}
+                >
+                  Réceptionner
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="catalog-empty">Sélectionne un produit pour voir sa fiche.</p>
+          )}
+        </aside>
       </div>
-      <Pager page={page} lastPage={lastPage} total={filtered.length} onChange={setPage} />
 
       {showReceive && (
         <Modal title="Réceptionner un lot" onClose={() => setShowReceive(false)}>

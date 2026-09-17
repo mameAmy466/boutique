@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
 import type { Category, Product, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
@@ -6,9 +6,10 @@ import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Pager } from '../components/Pager';
 import { exportToCsv } from '../lib/csv';
-import { IconTag } from '../components/DashboardIcons';
+import { mediaUrl } from '../lib/format';
+import { IconBox, IconCamera } from '../components/DashboardIcons';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 
 function emptyForm() {
   return {
@@ -40,11 +41,15 @@ export function ProductsPage() {
 
   const [newCategory, setNewCategory] = useState('');
   const [newSupplier, setNewSupplier] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   function loadAll() {
     setLoading(true);
@@ -85,18 +90,33 @@ export function ProductsPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      await api.post('/products', {
-        name: form.name,
-        reference: form.reference,
-        category_id: form.category_id || undefined,
-        supplier_id: form.supplier_id || undefined,
-        brand: form.brand || undefined,
-        unit: form.unit || undefined,
-        min_stock: form.min_stock ? Number(form.min_stock) : undefined,
-        max_stock: form.max_stock ? Number(form.max_stock) : undefined,
-      });
+      if (imageFile) {
+        const body = new FormData();
+        body.append('name', form.name);
+        body.append('reference', form.reference);
+        if (form.category_id) body.append('category_id', form.category_id);
+        if (form.supplier_id) body.append('supplier_id', form.supplier_id);
+        if (form.brand) body.append('brand', form.brand);
+        if (form.unit) body.append('unit', form.unit);
+        if (form.min_stock) body.append('min_stock', form.min_stock);
+        if (form.max_stock) body.append('max_stock', form.max_stock);
+        body.append('image', imageFile);
+        await api.post('/products', body);
+      } else {
+        await api.post('/products', {
+          name: form.name,
+          reference: form.reference,
+          category_id: form.category_id || undefined,
+          supplier_id: form.supplier_id || undefined,
+          brand: form.brand || undefined,
+          unit: form.unit || undefined,
+          min_stock: form.min_stock ? Number(form.min_stock) : undefined,
+          max_stock: form.max_stock ? Number(form.max_stock) : undefined,
+        });
+      }
       setShowCreate(false);
       setForm(emptyForm());
+      setImageFile(null);
       loadAll();
     } catch (err) {
       setFormError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
@@ -120,10 +140,42 @@ export function ProductsPage() {
 
   const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
 
   useEffect(() => {
     setPage(1);
   }, [search, categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedProductId !== null) setSelectedProductId(null);
+      return;
+    }
+    if (!filtered.some((p) => p.id === selectedProductId)) {
+      setSelectedProductId(filtered[0].id);
+    }
+  }, [filtered, selectedProductId]);
+
+  function pickProductImage() {
+    if (!selectedProductId) return;
+    imageInputRef.current?.click();
+  }
+
+  async function handleProductImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const productId = selectedProductId;
+    e.target.value = '';
+    if (!file || !productId) return;
+    setImageError(null);
+    const body = new FormData();
+    body.append('image', file);
+    try {
+      await api.post(`/products/${productId}/image`, body);
+      loadAll();
+    } catch (err) {
+      setImageError(err instanceof ApiError ? err.message : "Impossible d'enregistrer l'image.");
+    }
+  }
 
   function handleExport() {
     exportToCsv(
@@ -144,92 +196,182 @@ export function ProductsPage() {
   return (
     <>
       <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Stocks & Produits' }, { label: 'Produits' }]} />
-      <div className="page-header">
-        <div className="page-header-title">
-          <div className="page-icon cat-aqua">
-            <IconTag />
-          </div>
-          <div>
-            <h1>Produits</h1>
-            <p>{products.length} article{products.length > 1 ? 's' : ''} au catalogue</p>
-          </div>
-        </div>
-        {canManage && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            + Nouveau produit
-          </button>
-        )}
-      </div>
-
       {error && <div className="alert error">{error}</div>}
+      {imageError && <div className="alert error">{imageError}</div>}
 
-      <div className="list-toolbar">
-        <input
-          type="text"
-          placeholder="Rechercher par nom ou référence…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="">Toutes catégories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">Tous statuts</option>
-          <option value="active">Actif</option>
-          <option value="inactive">Inactif</option>
-        </select>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
-          ⬇️ Exporter CSV
-        </button>
-      </div>
+      <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={handleProductImage} />
 
-      <div className="table-wrap table-scroll cards-sm">
-        <table>
-          <thead>
-            <tr>
-              <th>Référence</th>
-              <th>Nom</th>
-              <th>Marque</th>
-              <th>Catégorie</th>
-              <th>Fournisseur</th>
-              <th>Unité</th>
-              <th>Seuil min.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr className="empty-row">
-                <td colSpan={7}>Chargement…</td>
-              </tr>
+      <div className="catalog-stage">
+        <div className="catalog-main">
+          <div className="catalog-heading">
+            <div>
+              <h1>Produits</h1>
+              <p>{products.length} article{products.length > 1 ? 's' : ''} au catalogue</p>
+            </div>
+            {canManage && (
+              <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+                + Nouveau produit
+              </button>
             )}
-            {!loading && filtered.length === 0 && (
-              <tr className="empty-row">
-                <td colSpan={7}>Aucun produit ne correspond.</td>
-              </tr>
-            )}
-            {pageItems.map((p) => (
-              <tr key={p.id}>
-                <td className="mono" data-label="Référence">{p.reference}</td>
-                <td data-label="Nom">{p.name}</td>
-                <td data-label="Marque">{p.brand ?? '—'}</td>
-                <td data-label="Catégorie">{p.category?.name ?? categoryName(p.category_id)}</td>
-                <td data-label="Fournisseur">{p.supplier?.name ?? supplierName(p.supplier_id)}</td>
-                <td data-label="Unité">{p.unit}</td>
-                <td className="num" data-label="Seuil min.">{p.min_stock}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          </div>
+
+          {loading && <div className="spinner-line">Chargement…</div>}
+
+          <div className="catalog-stats">
+            <div className="catalog-stat">
+              <span className="label">Produits</span>
+              <span className="value num">{filtered.length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Actifs</span>
+              <span className="value num">{filtered.filter((p) => p.status === 'active').length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Inactifs</span>
+              <span className="value num">{filtered.filter((p) => p.status === 'inactive').length}</span>
+            </div>
+          </div>
+
+          <section className="catalog-history">
+            <h2>Liste des produits</h2>
+            <div className="list-toolbar">
+              <input
+                type="text"
+                placeholder="Rechercher un produit…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                <option value="">Toutes catégories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">Tous statuts</option>
+                <option value="active">Actif</option>
+                <option value="inactive">Inactif</option>
+              </select>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
+                ⬇️ CSV
+              </button>
+            </div>
+
+            <div className="table-wrap table-scroll cards-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Référence</th>
+                    <th>Nom</th>
+                    <th>Marque</th>
+                    <th>Catégorie</th>
+                    <th>Fournisseur</th>
+                    <th>Unité</th>
+                    <th>Seuil min.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!loading && filtered.length === 0 && (
+                    <tr className="empty-row">
+                      <td colSpan={7}>Aucun produit ne correspond.</td>
+                    </tr>
+                  )}
+                  {pageItems.map((p) => (
+                    <tr
+                      key={p.id}
+                      className={selectedProductId === p.id ? 'is-selected' : undefined}
+                      onClick={() => setSelectedProductId(p.id)}
+                    >
+                      <td className="mono" data-label="Référence">{p.reference}</td>
+                      <td data-label="Nom">{p.name}</td>
+                      <td data-label="Marque">{p.brand ?? '—'}</td>
+                      <td data-label="Catégorie">{p.category?.name ?? categoryName(p.category_id)}</td>
+                      <td data-label="Fournisseur">{p.supplier?.name ?? supplierName(p.supplier_id)}</td>
+                      <td data-label="Unité">{p.unit}</td>
+                      <td className="num" data-label="Seuil min.">{p.min_stock}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pager page={page} lastPage={lastPage} total={filtered.length} onChange={setPage} />
+          </section>
+        </div>
+
+        <aside className="catalog-aside">
+          <h2>Fiche produit</h2>
+          {selectedProduct ? (
+            <>
+              <div className="catalog-aside-block">
+                <span className="label">Référence</span>
+                <div className="catalog-aside-box">{selectedProduct.reference}</div>
+              </div>
+              <div className="catalog-aside-block">
+                <span className="label">Catégorie</span>
+                <div className="catalog-aside-box">
+                  {selectedProduct.category?.name ?? categoryName(selectedProduct.category_id)}
+                  {selectedProduct.brand ? ` · ${selectedProduct.brand}` : ''}
+                </div>
+              </div>
+              <div className="catalog-aside-product">
+                <div className="catalog-aside-thumb">
+                  {mediaUrl(selectedProduct.image_url) ? (
+                    <img src={mediaUrl(selectedProduct.image_url) ?? ''} alt={selectedProduct.name} />
+                  ) : (
+                    <div className="stock-card-placeholder">
+                      <IconBox />
+                    </div>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="stock-card-photo"
+                      title="Photo du produit"
+                      aria-label="Photo du produit"
+                      onClick={pickProductImage}
+                    >
+                      <IconCamera />
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <strong>{selectedProduct.name}</strong>
+                  <span>
+                    {selectedProduct.unit}
+                    {selectedProduct.supplier?.name ? ` · ${selectedProduct.supplier.name}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="catalog-totals">
+                <div>
+                  <span>Fournisseur</span>
+                  <span>{selectedProduct.supplier?.name ?? supplierName(selectedProduct.supplier_id)}</span>
+                </div>
+                <div>
+                  <span>Seuil min.</span>
+                  <span className="num">{selectedProduct.min_stock}</span>
+                </div>
+                <div className="total">
+                  <span>Statut</span>
+                  <span>{selectedProduct.status === 'active' ? 'Actif' : 'Inactif'}</span>
+                </div>
+              </div>
+              {canManage && (
+                <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+                  Nouveau produit
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="catalog-empty">Sélectionne un produit pour voir sa fiche.</p>
+          )}
+        </aside>
       </div>
-      <Pager page={page} lastPage={lastPage} total={filtered.length} onChange={setPage} />
 
       {showCreate && (
-        <Modal title="Nouveau produit" onClose={() => setShowCreate(false)}>
+        <Modal title="Nouveau produit" onClose={() => { setShowCreate(false); setImageFile(null); }}>
           <form onSubmit={handleCreate}>
             {formError && <div className="alert error">{formError}</div>}
             <div className="form-grid">
@@ -273,6 +415,15 @@ export function ProductsPage() {
                   min={0}
                   value={form.max_stock}
                   onChange={(e) => setForm({ ...form, max_stock: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="p-image">Photo</label>
+                <input
+                  id="p-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
                 />
               </div>
             </div>
@@ -326,7 +477,7 @@ export function ProductsPage() {
             </div>
 
             <div className="form-actions" style={{ marginTop: 16 }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
+              <button type="button" className="btn btn-ghost" onClick={() => { setShowCreate(false); setImageFile(null); }}>
                 Annuler
               </button>
               <button type="submit" className="btn btn-primary" disabled={submitting}>

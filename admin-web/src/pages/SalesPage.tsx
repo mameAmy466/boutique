@@ -8,19 +8,12 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { Pager } from '../components/Pager';
 import { InvoiceReceipt } from '../components/InvoiceReceipt';
 import { exportToCsv } from '../lib/csv';
-import { formatDate, formatMoney } from '../lib/format';
-import { IconRegister } from '../components/DashboardIcons';
+import { formatDate, formatMoney, initials } from '../lib/format';
 
 const BarcodeScannerModal = lazy(() =>
   import('../components/BarcodeScannerModal').then((m) => ({ default: m.BarcodeScannerModal })),
 );
 
-const STATUS_BADGE: Record<Sale['status'], string> = {
-  completed: 'ok',
-  cancelled: 'bad',
-  returned: 'warn',
-  partially_returned: 'warn',
-};
 const STATUS_LABEL: Record<Sale['status'], string> = {
   completed: 'Validée',
   cancelled: 'Annulée',
@@ -63,6 +56,7 @@ export function SalesPage() {
 
   const [viewSale, setViewSale] = useState<Sale | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const [selectedSaleId, setSelectedSaleId] = useState<number | null>(null);
 
   const [showNew, setShowNew] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -107,6 +101,18 @@ export function SalesPage() {
   useEffect(() => {
     setPage(1);
   }, [search, paymentFilter, statusFilter]);
+
+  useEffect(() => {
+    if (sales.length === 0) {
+      if (selectedSaleId !== null) setSelectedSaleId(null);
+      return;
+    }
+    if (!sales.some((sale) => sale.id === selectedSaleId)) {
+      setSelectedSaleId(sales[0].id);
+    }
+  }, [sales, selectedSaleId]);
+
+  const selectedSale = sales.find((sale) => sale.id === selectedSaleId) ?? null;
 
   function openSaleDetail(saleId: number) {
     setViewLoading(true);
@@ -288,105 +294,166 @@ export function SalesPage() {
   return (
     <>
       <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Ventes & Caisses' }, { label: 'Ventes' }]} />
-      <div className="page-header">
-        <div className="page-header-title">
-          <div className="page-icon">
-            <IconRegister />
-          </div>
-          <div>
-            <h1>Ventes</h1>
-            <p>{salesMeta.total} vente{salesMeta.total > 1 ? 's' : ''} au total</p>
-          </div>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowNew(true)}>
-          + Nouvelle vente
-        </button>
-      </div>
-
       {error && <div className="alert error">{error}</div>}
 
-      <div className="list-toolbar">
-        <input
-          type="text"
-          placeholder="Rechercher par n° de vente ou client…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}>
-          <option value="">Tous paiements</option>
-          {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">Tous statuts</option>
-          {Object.entries(STATUS_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={sales.length === 0}>
-          ⬇️ Exporter CSV
-        </button>
-      </div>
+      <div className="catalog-stage">
+        <div className="catalog-main">
+          <div className="catalog-heading">
+            <div>
+              <h1>Ventes</h1>
+              <p>{salesMeta.total} vente{salesMeta.total > 1 ? 's' : ''} au total</p>
+            </div>
+            <button className="btn btn-primary" onClick={() => setShowNew(true)}>
+              + Nouvelle vente
+            </button>
+          </div>
 
-      <div className="table-wrap table-scroll cards-sm">
-        <table>
-          <thead>
-            <tr>
-              <th>N° vente</th>
-              {isSuperAdmin && <th>Boutique</th>}
-              <th>Vendeur</th>
-              <th>Paiement</th>
-              <th>Total</th>
-              <th>Statut</th>
-              <th>Facture</th>
-              <th>Date</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 9 : 8}>Chargement…</td>
-              </tr>
-            )}
-            {!loading && sales.length === 0 && (
-              <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 9 : 8}>Aucune vente ne correspond.</td>
-              </tr>
-            )}
-            {sales.map((s) => (
-              <tr key={s.id}>
-                <td className="mono" data-label="N° vente">{s.sale_number}</td>
-                {isSuperAdmin && (
-                  <td data-label="Boutique">{shops.find((sh) => sh.id === s.shop_id)?.name ?? `#${s.shop_id}`}</td>
-                )}
-                <td data-label="Vendeur">{s.user?.name ?? `#${s.user_id}`}</td>
-                <td data-label="Paiement">{PAYMENT_LABEL[s.payment_method]}</td>
-                <td className="num" data-label="Total">{formatMoney(s.total)}</td>
-                <td data-label="Statut">
-                  <span className={`badge ${STATUS_BADGE[s.status]}`}>{STATUS_LABEL[s.status]}</span>
-                </td>
-                <td className="mono" data-label="Facture">{s.invoice?.invoice_number ?? '—'}</td>
-                <td data-label="Date">{formatDate(s.created_at)}</td>
-                <td data-label="">
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => openSaleDetail(s.id)}>
-                    👁️ Voir
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <div className="catalog-stats">
+            <div className="catalog-stat">
+              <span className="label">Ventes</span>
+              <span className="value num">{salesMeta.total}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Validées</span>
+              <span className="value num">{sales.filter((s) => s.status === 'completed').length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Montant</span>
+              <span className="value num">{formatMoney(sales.reduce((sum, s) => sum + Number(s.total), 0))}</span>
+            </div>
+          </div>
+
+          <section className="catalog-history">
+            <h2>Historique des ventes</h2>
+            <div className="list-toolbar">
+              <input
+                type="text"
+                placeholder="Rechercher un n° ou un client…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}>
+                <option value="">Tous paiements</option>
+                {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">Tous statuts</option>
+                {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={sales.length === 0}>
+                ⬇️ CSV
+              </button>
+            </div>
+
+            <div className="table-wrap table-scroll cards-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>N° vente</th>
+                    {isSuperAdmin && <th>Boutique</th>}
+                    <th>Vendeur</th>
+                    <th>Paiement</th>
+                    <th>Total</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr className="empty-row">
+                      <td colSpan={isSuperAdmin ? 7 : 6}>Chargement…</td>
+                    </tr>
+                  )}
+                  {!loading && sales.length === 0 && (
+                    <tr className="empty-row">
+                      <td colSpan={isSuperAdmin ? 7 : 6}>Aucune vente ne correspond.</td>
+                    </tr>
+                  )}
+                  {sales.map((s) => (
+                    <tr
+                      key={s.id}
+                      className={selectedSaleId === s.id ? 'is-selected' : undefined}
+                      onClick={() => setSelectedSaleId(s.id)}
+                    >
+                      <td className="mono" data-label="N° vente">{s.sale_number}</td>
+                      {isSuperAdmin && (
+                        <td data-label="Boutique">{shops.find((sh) => sh.id === s.shop_id)?.name ?? `#${s.shop_id}`}</td>
+                      )}
+                      <td data-label="Vendeur">{s.user?.name ?? `#${s.user_id}`}</td>
+                      <td data-label="Paiement">{PAYMENT_LABEL[s.payment_method]}</td>
+                      <td className="num" data-label="Total">{formatMoney(s.total)}</td>
+                      <td data-label="Statut">
+                        <span className={`badge ${s.status === 'completed' ? 'ok' : s.status === 'cancelled' ? 'bad' : 'warn'}`}>
+                          {STATUS_LABEL[s.status]}
+                        </span>
+                      </td>
+                      <td data-label="Date">{formatDate(s.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pager page={salesMeta.current_page} lastPage={salesMeta.last_page} total={salesMeta.total} onChange={setPage} />
+          </section>
+        </div>
+
+        <aside className="catalog-aside">
+          <h2>Détail de la vente</h2>
+          {selectedSale ? (
+            <>
+              <div className="catalog-aside-block">
+                <span className="label">Client</span>
+                <div className="catalog-aside-box">{selectedSale.customer_name || 'Vente comptoir'}</div>
+              </div>
+              <div className="catalog-aside-block">
+                <span className="label">Paiement</span>
+                <div className="catalog-aside-box">{PAYMENT_LABEL[selectedSale.payment_method]}</div>
+              </div>
+              <div className="catalog-aside-product">
+                <div className="catalog-row-avatar letter">{initials(selectedSale.customer_name || selectedSale.user?.name)}</div>
+                <div>
+                  <strong>{selectedSale.sale_number}</strong>
+                  <span>{selectedSale.invoice?.invoice_number ?? 'Sans facture'}</span>
+                </div>
+              </div>
+              <div className="catalog-totals">
+                <div>
+                  <span>Vendeur</span>
+                  <span>{selectedSale.user?.name ?? '—'}</span>
+                </div>
+                <div>
+                  <span>Statut</span>
+                  <span>{STATUS_LABEL[selectedSale.status]}</span>
+                </div>
+                <div className="total">
+                  <span>Total</span>
+                  <span className="num">{formatMoney(selectedSale.total)}</span>
+                </div>
+              </div>
+              <button type="button" className="btn btn-primary" onClick={() => openSaleDetail(selectedSale.id)}>
+                Voir la facture
+              </button>
+            </>
+          ) : (
+            <p className="catalog-empty">Sélectionne une vente pour voir le détail.</p>
+          )}
+        </aside>
       </div>
-      <Pager page={salesMeta.current_page} lastPage={salesMeta.last_page} total={salesMeta.total} onChange={setPage} />
 
       {showNew && (
-        <Modal title={completedSale ? 'Vente enregistrée' : 'Nouvelle vente'} onClose={closeSaleModal}>
+        <Modal
+          title={completedSale ? 'Vente enregistrée' : 'Nouvelle vente'}
+          onClose={closeSaleModal}
+          className="modal-wide"
+        >
           {completedSale ? (
             <>
               <div className="alert success" style={{ marginBottom: 16 }}>

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Navigate } from 'react-router-dom';
+import { NavLink, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from './Logo';
 import { TopBar } from './TopBar';
@@ -19,6 +19,8 @@ import {
 
 export function ProtectedLayout() {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const isDashboard = location.pathname === '/';
 
   if (loading) {
     return <div className="spinner-line" style={{ padding: 40 }}>Chargement…</div>;
@@ -30,6 +32,7 @@ export function ProtectedLayout() {
 
   const isAdmin = user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique';
   const isSuperAdmin = user.role?.slug === 'super_admin';
+  const firstName = user.name.trim().split(/\s+/)[0] ?? '';
 
   const stockProduits: NavGroupItem[] = [
     { to: '/products', label: 'Produits', icon: <IconTag /> },
@@ -48,7 +51,7 @@ export function ProtectedLayout() {
       <aside className="sidebar">
         <div className="brand">
           <Logo />
-          Boutique Admin
+          Boutique
         </div>
 
         <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
@@ -75,10 +78,28 @@ export function ProtectedLayout() {
         />
 
         <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
+
+        <div className="dash-sidebar-promo">
+          <p>Gérez votre stock en temps réel</p>
+          <Link to="/stocks" className="dash-sidebar-promo-btn">
+            Accéder
+          </Link>
+        </div>
       </aside>
 
       <div className="main-col">
-        <TopBar />
+        <TopBar
+          lead={
+            isDashboard ? (
+              <div>
+                <p className="dash-hello">Bonjour {firstName},</p>
+                <h1>Bienvenue sur Boutique</h1>
+              </div>
+            ) : (
+              <p className="topbar-context">{user.shop?.name ?? 'Boutique'}</p>
+            )
+          }
+        />
         <div className="main">
           <Outlet />
         </div>

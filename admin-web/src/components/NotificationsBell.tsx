@@ -48,8 +48,9 @@ export function NotificationsBell() {
         type="button"
         className="icon-btn"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
         aria-label="Notifications"
-        title="Notifications"
       >
         <IconBell />
         {alerts.length > 0 && <span className="notif-badge">{alerts.length > 9 ? '9+' : alerts.length}</span>}
