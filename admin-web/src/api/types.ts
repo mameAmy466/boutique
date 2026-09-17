@@ -31,6 +31,7 @@ export interface User {
   is_active: boolean;
   role: Role | null;
   shop: Shop | null;
+  created_at?: string;
 }
 
 export interface Category {
@@ -55,6 +56,8 @@ export interface Product {
   supplier_id: number | null;
   brand: string | null;
   unit: string;
+  image_path: string | null;
+  image_url: string | null;
   min_stock: number;
   max_stock: number | null;
   status: 'active' | 'inactive';
@@ -96,6 +99,48 @@ export type StockMovementType =
   | 'return'
   | 'price_correction'
   | 'deletion';
+
+export interface UserActivityMovement {
+  id: number;
+  type: StockMovementType;
+  quantity: number;
+  amount: number;
+  created_at: string;
+  product_name: string | null;
+}
+
+export interface UserActivitySale {
+  id: number;
+  sale_number: string;
+  customer_name: string | null;
+  payment_method: PaymentMethod;
+  status: Sale['status'];
+  total: number;
+  created_at: string;
+}
+
+export interface UserActivityStock {
+  id: number;
+  batch_code: string;
+  product_name: string | null;
+  quantity: number;
+  amount: number;
+  received_at: string | null;
+}
+
+export interface UserActivity {
+  sales: { count: number; amount: number; rows: UserActivitySale[] };
+  stocks: { count: number; amount: number; rows: UserActivityStock[] };
+  cash: {
+    sessions: number;
+    open: boolean;
+    register_name: string | null;
+    amount: number;
+    opening_amount: number;
+  };
+  movements: { count: number; amount: number };
+  recent_movements: UserActivityMovement[];
+}
 
 export interface StockMovement {
   id: number;
@@ -210,7 +255,7 @@ export interface DashboardFigures {
   shops?: { total: number; active: number };
   stock: { value: number; out_of_stock_batches: number };
   cash_sessions: { open: number };
-  alerts: { low_stock: number };
+  alerts: { low_stock: number; out_of_stock: number };
   shop?: { id: number; name: string; code: string };
   sales_trend: SalesTrendPoint[];
   top_products: TopProduct[];

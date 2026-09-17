@@ -25,10 +25,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/roles', [RoleController::class, 'index']);
 
     Route::apiResource('shops', ShopController::class);
+    Route::get('/users/{user}/activity', [UserController::class, 'activity']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('/products/{product}/image', [ProductController::class, 'uploadImage']);
 
     Route::get('/stocks', [StockController::class, 'index']);
     Route::post('/stocks', [StockController::class, 'store']);

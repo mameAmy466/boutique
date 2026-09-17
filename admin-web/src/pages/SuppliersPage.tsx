@@ -1,10 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
 import type { Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { IconTruck } from '../components/DashboardIcons';
+import { initials } from '../lib/format';
 
 function emptyForm() {
   return { name: '', phone: '', email: '', address: '' };
@@ -31,6 +31,8 @@ export function SuppliersPage() {
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   function load() {
     setLoading(true);
@@ -42,6 +44,29 @@ export function SuppliersPage() {
   }
 
   useEffect(load, []);
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return suppliers;
+    return suppliers.filter(
+      (s) =>
+        s.name.toLowerCase().includes(needle) ||
+        (s.phone ?? '').toLowerCase().includes(needle) ||
+        (s.email ?? '').toLowerCase().includes(needle),
+    );
+  }, [suppliers, search]);
+
+  const selected = filtered.find((s) => s.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedId !== null) setSelectedId(null);
+      return;
+    }
+    if (!filtered.some((s) => s.id === selectedId)) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -113,75 +138,140 @@ export function SuppliersPage() {
   return (
     <>
       <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Tiers' }, { label: 'Fournisseurs' }]} />
-      <div className="page-header">
-        <div className="page-header-title">
-          <div className="page-icon cat-blue">
-            <IconTruck />
-          </div>
-          <div>
-            <h1>Fournisseurs</h1>
-            <p>{suppliers.length} fournisseur{suppliers.length > 1 ? 's' : ''} référencé{suppliers.length > 1 ? 's' : ''}</p>
-          </div>
-        </div>
-        {canManage && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            + Nouveau fournisseur
-          </button>
-        )}
-      </div>
-
       {error && <div className="alert error">{error}</div>}
       {deleteError && <div className="alert error">{deleteError}</div>}
 
-      <div className="table-wrap table-scroll cards-sm">
-        <table>
-          <thead>
-            <tr>
-              <th>Nom</th>
-              <th>Téléphone</th>
-              <th>Email</th>
-              <th>Adresse</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr className="empty-row">
-                <td colSpan={5}>Chargement…</td>
-              </tr>
+      <div className="catalog-stage">
+        <div className="catalog-main">
+          <div className="catalog-heading">
+            <div>
+              <h1>Fournisseurs</h1>
+              <p>
+                {suppliers.length} fournisseur{suppliers.length > 1 ? 's' : ''} référencé
+                {suppliers.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            {canManage && (
+              <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+                + Nouveau fournisseur
+              </button>
             )}
-            {!loading && suppliers.length === 0 && (
-              <tr className="empty-row">
-                <td colSpan={5}>Aucun fournisseur pour le moment.</td>
-              </tr>
-            )}
-            {suppliers.map((s) => (
-              <tr key={s.id}>
-                <td data-label="Nom">{s.name}</td>
-                <td data-label="Téléphone">{s.phone ?? '—'}</td>
-                <td data-label="Email">{s.email ?? '—'}</td>
-                <td data-label="Adresse">{s.address ?? '—'}</td>
-                <td data-label="" className="row-actions">
-                  {canManage && (
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => openEdit(s)}>
-                      ✏️ Modifier
-                    </button>
+          </div>
+
+          <div className="catalog-stats">
+            <div className="catalog-stat">
+              <span className="label">Fournisseurs</span>
+              <span className="value num">{filtered.length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Avec téléphone</span>
+              <span className="value num">{filtered.filter((s) => s.phone).length}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Avec e-mail</span>
+              <span className="value num">{filtered.filter((s) => s.email).length}</span>
+            </div>
+          </div>
+
+          <section className="catalog-history">
+            <h2>Annuaire</h2>
+            <div className="list-toolbar">
+              <input
+                type="text"
+                placeholder="Rechercher un fournisseur…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="table-wrap table-scroll cards-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Téléphone</th>
+                    <th>Email</th>
+                    <th>Adresse</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr className="empty-row">
+                      <td colSpan={4}>Chargement…</td>
+                    </tr>
                   )}
-                  {canDelete && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-ghost danger"
-                      disabled={deletingId === s.id}
-                      onClick={() => handleDelete(s)}
+                  {!loading && filtered.length === 0 && (
+                    <tr className="empty-row">
+                      <td colSpan={4}>Aucun fournisseur pour le moment.</td>
+                    </tr>
+                  )}
+                  {filtered.map((s) => (
+                    <tr
+                      key={s.id}
+                      className={selectedId === s.id ? 'is-selected' : undefined}
+                      onClick={() => setSelectedId(s.id)}
                     >
-                      🗑️ {deletingId === s.id ? '…' : 'Supprimer'}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      <td data-label="Nom">{s.name}</td>
+                      <td data-label="Téléphone">{s.phone ?? '—'}</td>
+                      <td data-label="Email">{s.email ?? '—'}</td>
+                      <td data-label="Adresse">{s.address ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <aside className="catalog-aside">
+          <h2>Fiche fournisseur</h2>
+          {selected ? (
+            <>
+              <div className="catalog-aside-block">
+                <span className="label">Adresse</span>
+                <div className="catalog-aside-box">{selected.address || '—'}</div>
+              </div>
+              <div className="catalog-aside-block">
+                <span className="label">Email</span>
+                <div className="catalog-aside-box">{selected.email || '—'}</div>
+              </div>
+              <div className="catalog-aside-product">
+                <div className="catalog-row-avatar letter">{initials(selected.name)}</div>
+                <div>
+                  <strong>{selected.name}</strong>
+                  <span>{selected.phone || 'Pas de téléphone'}</span>
+                </div>
+              </div>
+              <div className="catalog-totals">
+                <div>
+                  <span>Téléphone</span>
+                  <span>{selected.phone || '—'}</span>
+                </div>
+                <div className="total">
+                  <span>Contact</span>
+                  <span>{selected.email || selected.phone || '—'}</span>
+                </div>
+              </div>
+              {canManage && (
+                <button type="button" className="btn btn-primary" onClick={() => openEdit(selected)}>
+                  Modifier
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
+                  disabled={deletingId === selected.id}
+                  onClick={() => handleDelete(selected)}
+                >
+                  {deletingId === selected.id ? 'Suppression…' : 'Supprimer'}
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="catalog-empty">Sélectionne un fournisseur pour voir sa fiche.</p>
+          )}
+        </aside>
       </div>
 
       {showCreate && (

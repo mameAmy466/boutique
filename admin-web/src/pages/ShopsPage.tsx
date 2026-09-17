@@ -1,11 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
-import type { Shop } from '../api/types';
+import type { DashboardFigures, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { Drawer } from '../components/Drawer';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { formatMoney } from '../lib/format';
-import { IconShop } from '../components/DashboardIcons';
+import { formatMoney, initials } from '../lib/format';
+import { SalesTrendChart } from '../components/charts/SalesTrendChart';
+import { TopProductsChart } from '../components/charts/TopProductsChart';
 
 const STATUS_BADGE: Record<Shop['status'], string> = {
   active: 'ok',
@@ -41,9 +43,14 @@ export function ShopsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [figures, setFigures] = useState<DashboardFigures | null>(null);
+  const [figuresLoading, setFiguresLoading] = useState(false);
 
   const canCreate = user?.role?.slug === 'super_admin';
 
@@ -57,6 +64,42 @@ export function ShopsPage() {
   }
 
   useEffect(load, []);
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return shops;
+    return shops.filter(
+      (shop) =>
+        shop.name.toLowerCase().includes(needle) ||
+        shop.code.toLowerCase().includes(needle) ||
+        (shop.manager_name ?? '').toLowerCase().includes(needle),
+    );
+  }, [shops, search]);
+
+  const selected = shops.find((shop) => shop.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (shops.length === 0) {
+      if (selectedId !== null) setSelectedId(null);
+      return;
+    }
+    if (!shops.some((shop) => shop.id === selectedId)) {
+      setSelectedId(shops[0].id);
+    }
+  }, [shops, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setFigures(null);
+      return;
+    }
+    setFiguresLoading(true);
+    api
+      .get<DashboardFigures>(`/dashboard/shop/${selectedId}`)
+      .then(setFigures)
+      .catch(() => setFigures(null))
+      .finally(() => setFiguresLoading(false));
+  }, [selectedId]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -81,64 +124,160 @@ export function ShopsPage() {
     }
   }
 
+  function pickShop(id: number) {
+    setSelectedId(id);
+    setShowPicker(false);
+    setSearch('');
+  }
+
   return (
     <>
       <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Administration' }, { label: 'Boutiques' }]} />
-      <div className="page-header">
-        <div className="page-header-title">
-          <div className="page-icon cat-blue">
-            <IconShop />
-          </div>
-          <div>
-            <h1>Boutiques</h1>
-            <p>{shops.length} boutique{shops.length > 1 ? 's' : ''} visible{shops.length > 1 ? 's' : ''}</p>
-          </div>
-        </div>
-        {canCreate && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            + Nouvelle boutique
-          </button>
-        )}
-      </div>
-
       {error && <div className="alert error">{error}</div>}
 
-      <div className="table-wrap table-scroll cards-sm">
-        <table>
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Nom</th>
-              <th>Responsable</th>
-              <th>Budget mensuel</th>
-              <th>Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr className="empty-row">
-                <td colSpan={5}>Chargement…</td>
-              </tr>
-            )}
-            {!loading && shops.length === 0 && (
-              <tr className="empty-row">
-                <td colSpan={5}>Aucune boutique pour le moment.</td>
-              </tr>
-            )}
-            {shops.map((shop) => (
-              <tr key={shop.id}>
-                <td className="mono" data-label="Code">{shop.code}</td>
-                <td data-label="Nom">{shop.name}</td>
-                <td data-label="Responsable">{shop.manager_name ?? '—'}</td>
-                <td className="num" data-label="Budget mensuel">{formatMoney(shop.monthly_budget)}</td>
-                <td data-label="Statut">
-                  <span className={`badge ${STATUS_BADGE[shop.status]}`}>{STATUS_LABEL[shop.status]}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="catalog-heading">
+        <div>
+          <h1>Boutiques</h1>
+          <p>{selected ? `${selected.name} · ${selected.code}` : 'Choisis une boutique'}</p>
+        </div>
+        <div className="shops-heading-actions">
+          <button type="button" className="btn" onClick={() => setShowPicker(true)}>
+            Filtrer la boutique
+          </button>
+          {canCreate && (
+            <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+              + Nouvelle boutique
+            </button>
+          )}
+        </div>
       </div>
+
+      <div className="catalog-stats four">
+        <div className="catalog-stat">
+          <span className="label">Ventes du jour</span>
+          <span className="value num">{figuresLoading ? '…' : formatMoney(figures?.revenue.today ?? 0)}</span>
+        </div>
+        <div className="catalog-stat">
+          <span className="label">Stock</span>
+          <span className="value num">{figuresLoading ? '…' : formatMoney(figures?.stock.value ?? 0)}</span>
+        </div>
+        <div className="catalog-stat">
+          <span className="label">Produits en rupture</span>
+          <span className="value num">{figuresLoading ? '…' : (figures?.alerts.out_of_stock ?? 0)}</span>
+        </div>
+        <div className="catalog-stat">
+          <span className="label">Chiffre d’affaires</span>
+          <span className="value num">{figuresLoading ? '…' : formatMoney(figures?.revenue.this_month ?? 0)}</span>
+        </div>
+      </div>
+
+      <div className="shops-panels">
+        <aside className="catalog-aside shops-detail">
+          <h2>Fiche boutique</h2>
+          {loading && <p className="catalog-empty">Chargement…</p>}
+          {!loading && selected ? (
+            <>
+              {selected.description && (
+                <div className="catalog-aside-block">
+                  <span className="label">Description</span>
+                  <div className="catalog-aside-box">{selected.description}</div>
+                </div>
+              )}
+              <div className="catalog-aside-block">
+                <span className="label">Adresse</span>
+                <div className="catalog-aside-box">{selected.address || '—'}</div>
+              </div>
+              <div className="catalog-aside-block">
+                <span className="label">Contact</span>
+                <div className="catalog-aside-box">
+                  {selected.phone || '—'}
+                  {selected.email ? ` · ${selected.email}` : ''}
+                </div>
+              </div>
+              <div className="catalog-aside-product">
+                <div className="catalog-row-avatar letter">{initials(selected.name)}</div>
+                <div>
+                  <strong>{selected.name}</strong>
+                  <span>{selected.code}</span>
+                </div>
+              </div>
+              <div className="catalog-totals">
+                <div>
+                  <span>Responsable</span>
+                  <span>{selected.manager_name || '—'}</span>
+                </div>
+                <div>
+                  <span>Catégorie</span>
+                  <span>{selected.category || '—'}</span>
+                </div>
+                <div>
+                  <span>Statut</span>
+                  <span>{STATUS_LABEL[selected.status]}</span>
+                </div>
+                <div className="total">
+                  <span>Budget</span>
+                  <span className="num">{formatMoney(selected.monthly_budget)}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            !loading && <p className="catalog-empty">Choisis une boutique dans le filtre.</p>
+          )}
+        </aside>
+
+        <section className="catalog-aside shops-charts">
+          <h2>Activité</h2>
+          {figuresLoading && <p className="catalog-empty">Chargement…</p>}
+          {!figuresLoading && !figures && (
+            <p className="catalog-empty">Choisis une boutique pour voir ses diagrammes.</p>
+          )}
+          {!figuresLoading && figures && (
+            <>
+              <div className="shops-charts-block shops-charts-trend">
+                <h3>Évolution des ventes · 14 jours</h3>
+                <SalesTrendChart data={figures.sales_trend} variant="wave" />
+              </div>
+              <div className="shops-charts-block">
+                <h3>Top produits</h3>
+                <TopProductsChart data={figures.top_products} />
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+
+      {showPicker && (
+        <Drawer title="Choisir une boutique" onClose={() => setShowPicker(false)}>
+          <div className="list-toolbar">
+            <input
+              type="text"
+              placeholder="Rechercher…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          {filtered.length === 0 && <p className="catalog-empty">Aucune boutique.</p>}
+          {filtered.map((shop) => (
+            <button
+              key={shop.id}
+              type="button"
+              className={`shop-picker-row${selectedId === shop.id ? ' is-selected' : ''}`}
+              onClick={() => pickShop(shop.id)}
+            >
+              <span className="catalog-row-avatar letter">{initials(shop.name)}</span>
+              <span className="catalog-row-copy">
+                <strong>{shop.name}</strong>
+                <span>
+                  {shop.code}
+                  {shop.manager_name ? ` · ${shop.manager_name}` : ''}
+                </span>
+              </span>
+              <span className={`badge ${STATUS_BADGE[shop.status]}`}>{STATUS_LABEL[shop.status]}</span>
+            </button>
+          ))}
+        </Drawer>
+      )}
 
       {showCreate && (
         <Modal title="Nouvelle boutique" onClose={() => setShowCreate(false)}>

@@ -1,20 +1,17 @@
-import { Link } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { SearchBox } from './SearchBox';
 import { NotificationsBell } from './NotificationsBell';
 import { ProfileMenu } from './ProfileMenu';
-import { IconSettings } from './DashboardIcons';
 
-export function TopBar() {
+export function TopBar({ lead }: { lead?: ReactNode }) {
   return (
-    <div className="topbar">
+    <header className="topbar">
+      <div className="topbar-lead">{lead}</div>
       <div className="topbar-actions">
-        <SearchBox />
+        <SearchBox variant="inline" />
         <NotificationsBell />
-        <Link to="/account" className="icon-btn" aria-label="Paramètres du compte" title="Paramètres du compte">
-          <IconSettings />
-        </Link>
         <ProfileMenu />
       </div>
-    </div>
+    </header>
   );
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
@@ -29,7 +30,13 @@ class ProductController extends Controller
             'min_stock' => ['nullable', 'integer', 'min:0'],
             'max_stock' => ['nullable', 'integer', 'min:0'],
             'status' => ['nullable', 'in:active,inactive'],
+            'image' => ['nullable', 'image', 'max:4096'],
         ]);
+
+        if ($request->hasFile('image')) {
+            $data['image_path'] = $request->file('image')->store('products', 'public');
+        }
+        unset($data['image']);
 
         $product = Product::create($data);
 
@@ -56,11 +63,39 @@ class ProductController extends Controller
             'min_stock' => ['nullable', 'integer', 'min:0'],
             'max_stock' => ['nullable', 'integer', 'min:0'],
             'status' => ['nullable', 'in:active,inactive'],
+            'image' => ['nullable', 'image', 'max:4096'],
         ]);
+
+        if ($request->hasFile('image')) {
+            if ($product->image_path) {
+                Storage::disk('public')->delete($product->image_path);
+            }
+            $data['image_path'] = $request->file('image')->store('products', 'public');
+        }
+        unset($data['image']);
 
         $product->update($data);
 
         return response()->json($product);
+    }
+
+    public function uploadImage(Request $request, Product $product)
+    {
+        $this->authorize('update', $product);
+
+        $request->validate([
+            'image' => ['required', 'image', 'max:4096'],
+        ]);
+
+        if ($product->image_path) {
+            Storage::disk('public')->delete($product->image_path);
+        }
+
+        $product->update([
+            'image_path' => $request->file('image')->store('products', 'public'),
+        ]);
+
+        return response()->json($product->fresh(['category', 'supplier']));
     }
 
     public function destroy(Product $product)

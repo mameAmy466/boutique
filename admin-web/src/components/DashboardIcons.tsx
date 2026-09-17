@@ -194,3 +194,94 @@ export function IconMoon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function IconCard(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <rect x="2.5" y="4.5" width="15" height="11" rx="2" />
+      <path d="M2.5 8.2h15" />
+      <path d="M6 13h3" />
+    </svg>
+  );
+}
+
+export function IconBank(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 8.2 10 3.8 17 8.2" />
+      <path d="M5 8.5v6.2M8.5 8.5v6.2M11.5 8.5v6.2M15 8.5v6.2" />
+      <path d="M3.5 14.7h13" />
+    </svg>
+  );
+}
+
+export function IconSend(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M10 16.2V5.2" />
+      <path d="M6.2 8.8 10 5.2l3.8 3.6" />
+    </svg>
+  );
+}
+
+export function IconBag(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.2 7.2h11.6l-.8 8.3a1.8 1.8 0 0 1-1.8 1.6H6.8a1.8 1.8 0 0 1-1.8-1.6L4.2 7.2Z" />
+      <path d="M7.2 7.2V5.8A2.8 2.8 0 0 1 10 3a2.8 2.8 0 0 1 2.8 2.8v1.4" />
+    </svg>
+  );
+}
+
+export function IconSpark(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M10 3.2 11.2 7.6 15.5 8.8 11.2 10 10 14.4 8.8 10 4.5 8.8 8.8 7.6 10 3.2Z" />
+    </svg>
+  );
+}
+
+export function IconBarcode(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3.5 4.5v11M6.2 4.5v11M8 4.5v11M11.5 4.5v11M13.2 4.5v11M16.5 4.5v11" />
+    </svg>
+  );
+}
+
+export function IconReceipt(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 3.5h10v13.2l-1.6-1-1.7 1-1.7-1-1.7 1-1.7-1-1.6 1V3.5Z" />
+      <path d="M7.5 7h5M7.5 10h5M7.5 13h3" />
+    </svg>
+  );
+}
+
+export function IconPencil(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M11.8 4.2 15.8 8.2 8 16H4v-4l7.8-7.8Z" />
+      <path d="M10.2 5.8 14.2 9.8" />
+    </svg>
+  );
+}
+
+export function IconTrash(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.5 6.5h11" />
+      <path d="M8 6.5V4.5h4v2" />
+      <path d="M6.2 6.5 7 16h6l.8-9.5" />
+    </svg>
+  );
+}
+
+export function IconCamera(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3.5 7.2h3l1.2-2h4.6l1.2 2h3v10.3H3.5V7.2Z" />
+      <circle cx="10" cy="12.2" r="2.6" />
+    </svg>
+  );
+}

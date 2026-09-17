@@ -114,8 +114,19 @@ class DashboardController extends Controller
             })
             ->count();
 
+        $outOfStock = Product::query()
+            ->whereHas('batches', function ($q) use ($shopId) {
+                $q->when($shopId, fn ($qq) => $qq->where('shop_id', $shopId));
+            })
+            ->whereDoesntHave('batches', function ($q) use ($shopId) {
+                $q->when($shopId, fn ($qq) => $qq->where('shop_id', $shopId))
+                    ->where('quantity_available', '>', 0);
+            })
+            ->count();
+
         return [
             'low_stock' => $lowStock,
+            'out_of_stock' => $outOfStock,
         ];
     }
 
