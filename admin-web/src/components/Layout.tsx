@@ -7,11 +7,14 @@ import { NavGroup, type NavGroupItem } from './NavGroup';
 import {
   IconAlert,
   IconAudit,
+  IconBag,
+  IconBank,
   IconBox,
   IconCashDrawer,
   IconClipboard,
   IconClose,
   IconGrid,
+  IconReceipt,
   IconRegister,
   IconSettings,
   IconShop,
@@ -78,6 +81,13 @@ export function ProtectedLayout() {
     ...(isSuperAdmin ? [{ to: '/inventory', label: 'Inventaire', icon: <IconClipboard /> }] : []),
   ];
 
+  const accountingItems: NavGroupItem[] = [
+    { to: '/expenses', label: 'Dépenses', icon: <IconReceipt /> },
+    { to: '/cashflow', label: 'Trésorerie', icon: <IconBank /> },
+    { to: '/supplier-debts', label: 'Dettes fournisseurs', icon: <IconTruck /> },
+    { to: '/client-debts', label: 'Créances clients', icon: <IconBag /> },
+  ];
+
   return (
     <div className={`app-shell${menuOpen ? ' nav-open' : ''}`}>
       <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
@@ -117,6 +127,8 @@ export function ProtectedLayout() {
           icon={<IconTruck />}
           items={[{ to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> }]}
         />
+
+        {isAdmin && <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />}
 
         <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
 

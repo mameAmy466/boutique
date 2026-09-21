@@ -270,3 +270,85 @@ export interface ApiErrorBody {
   available?: number;
   requested?: number;
 }
+
+export type ExpenseCategory =
+  | 'loyer'
+  | 'electricite'
+  | 'eau'
+  | 'internet'
+  | 'transport'
+  | 'salaires'
+  | 'fournitures'
+  | 'marketing'
+  | 'taxes'
+  | 'autre';
+
+export interface Expense {
+  id: number;
+  shop_id: number;
+  category: ExpenseCategory;
+  label: string | null;
+  amount: string;
+  expense_date: string;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export interface Customer {
+  id: number;
+  shop_id: number;
+  name: string;
+  phone: string | null;
+  note: string | null;
+}
+
+export type DebtStatus = 'pending' | 'partial' | 'paid';
+
+export interface DebtPayment {
+  id: number;
+  amount: string;
+  paid_at: string;
+  note: string | null;
+  created_by: number | null;
+}
+
+export interface SupplierDebt {
+  id: number;
+  shop_id: number;
+  supplier_id: number;
+  amount: string;
+  due_date: string | null;
+  note: string | null;
+  created_at: string;
+  paid_amount: number;
+  remaining: number;
+  status: DebtStatus;
+  supplier?: Supplier;
+  created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export interface ClientDebt {
+  id: number;
+  shop_id: number;
+  customer_id: number;
+  amount: string;
+  due_date: string | null;
+  note: string | null;
+  created_at: string;
+  paid_amount: number;
+  remaining: number;
+  status: DebtStatus;
+  customer?: Customer;
+  created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export type CashflowGroupBy = 'day' | 'week' | 'month' | 'year';
+
+export interface CashflowBucket {
+  period: string;
+  entrees: number;
+  sorties: number;
+  net: number;
+}

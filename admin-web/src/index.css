@@ -16,6 +16,7 @@
   --warning-soft: #f5ecd9;
   --shadow: 0 12px 32px -18px rgba(27, 31, 39, 0.18);
   --chart-blue: #2a78d6;
+  --chart-orange: #eb6834;
   --chart-aqua: #1baf7a;
   --chart-violet: #4a3aa7;
   --chart-grid: #e1e0d9;
@@ -53,6 +54,7 @@
     --warning-soft: #33290f;
     --shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.55);
     --chart-blue: #3987e5;
+    --chart-orange: #d95926;
     --chart-aqua: #199e70;
     --chart-violet: #9085e9;
     --chart-grid: #2c2c2a;
@@ -77,6 +79,7 @@
   --warning-soft: #33290f;
   --shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.55);
   --chart-blue: #3987e5;
+  --chart-orange: #d95926;
   --chart-aqua: #199e70;
   --chart-violet: #9085e9;
   --chart-grid: #2c2c2a;
