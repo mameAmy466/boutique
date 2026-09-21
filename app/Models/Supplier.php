@@ -21,4 +21,9 @@ class Supplier extends Model
     {
         return $this->hasMany(ProductBatch::class);
     }
+
+    public function debts(): HasMany
+    {
+        return $this->hasMany(SupplierDebt::class);
+    }
 }

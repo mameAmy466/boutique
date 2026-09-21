@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\AccountingController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ClientDebtController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RoleController;
@@ -12,6 +16,7 @@ use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\SupplierDebtController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,4 +59,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/dashboard/general', [DashboardController::class, 'general']);
     Route::get('/dashboard/shop/{shop}', [DashboardController::class, 'shop']);
+
+    Route::apiResource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
+
+    Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update']);
+
+    Route::apiResource('supplier-debts', SupplierDebtController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::post('/supplier-debts/{supplierDebt}/payments', [SupplierDebtController::class, 'addPayment']);
+
+    Route::apiResource('client-debts', ClientDebtController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::post('/client-debts/{clientDebt}/payments', [ClientDebtController::class, 'addPayment']);
+
+    Route::get('/accounting/cashflow', [AccountingController::class, 'cashflow']);
 });

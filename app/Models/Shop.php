@@ -57,4 +57,24 @@ class Shop extends Model
     {
         return $this->hasMany(StockMovement::class);
     }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    public function supplierDebts(): HasMany
+    {
+        return $this->hasMany(SupplierDebt::class);
+    }
+
+    public function clientDebts(): HasMany
+    {
+        return $this->hasMany(ClientDebt::class);
+    }
 }

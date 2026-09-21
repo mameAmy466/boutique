@@ -11,6 +11,10 @@ import { StocksPage } from './pages/StocksPage';
 import { SalesPage } from './pages/SalesPage';
 import { CashSessionsPage } from './pages/CashSessionsPage';
 import { CashDiscrepanciesPage } from './pages/CashDiscrepanciesPage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { CashflowPage } from './pages/CashflowPage';
+import { SupplierDebtsPage } from './pages/SupplierDebtsPage';
+import { ClientDebtsPage } from './pages/ClientDebtsPage';
 import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AccountPage } from './pages/AccountPage';
@@ -31,6 +35,10 @@ export default function App() {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/cash-sessions" element={<CashSessionsPage />} />
             <Route path="/cash-discrepancies" element={<CashDiscrepanciesPage />} />
+            <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/cashflow" element={<CashflowPage />} />
+            <Route path="/supplier-debts" element={<SupplierDebtsPage />} />
+            <Route path="/client-debts" element={<ClientDebtsPage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account" element={<AccountPage />} />

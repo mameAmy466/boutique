@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\BatchInUseException;
+use App\Exceptions\DebtInUseException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidDiscountException;
 use App\Exceptions\PriceBelowMinimumException;
@@ -50,6 +51,10 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (InvalidDiscountException $e, $request) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        });
+
+        $exceptions->render(function (DebtInUseException $e, $request) {
             return response()->json(['message' => $e->getMessage()], 422);
         });
     })->create();
