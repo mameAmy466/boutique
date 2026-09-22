@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api, ApiError, firstValidationError } from '../api/client';
-import type { ClientDebt, Customer, CustomerFiche, Shop } from '../api/types';
+import type { ClientDebt, Customer, CustomerFiche, ProductBatch, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
@@ -28,6 +28,23 @@ function emptyForm(shopId: string) {
   return { shop_id: shopId, customer_id: '', amount: '', due_date: '', note: '' };
 }
 
+interface DebtItemLine {
+  product_batch_id: string;
+  quantity: string;
+  unit_price: string;
+}
+
+function emptyDebtItem(): DebtItemLine {
+  return { product_batch_id: '', quantity: '1', unit_price: '' };
+}
+
+function debtProductsSummary(debt: ClientDebt): string | null {
+  if (!debt.items || debt.items.length === 0) return null;
+  return debt.items
+    .map((it) => `${it.product_batch?.product?.name ?? '—'} ×${it.quantity}`)
+    .join(', ');
+}
+
 function emptyCustomerForm(shopId: string) {
   return { shop_id: shopId, name: '', tax_id: '', phone: '', address: '', payment_terms_days: '', credit_limit: '' };
 }
@@ -48,6 +65,8 @@ export function ClientDebtsPage() {
   const [form, setForm] = useState(emptyForm(user?.shop_id ? String(user.shop_id) : ''));
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [batches, setBatches] = useState<ProductBatch[]>([]);
+  const [debtItems, setDebtItems] = useState<DebtItemLine[]>([emptyDebtItem()]);
 
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [customerForm, setCustomerForm] = useState(emptyCustomerForm(user?.shop_id ? String(user.shop_id) : ''));
@@ -98,20 +117,57 @@ export function ClientDebtsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin, form.shop_id]);
 
+  useEffect(() => {
+    if (!showCreate || !form.shop_id) {
+      setBatches([]);
+      return;
+    }
+    api.get<ProductBatch[]>(`/stocks?shop_id=${form.shop_id}`).then(setBatches);
+  }, [showCreate, form.shop_id]);
+
+  function updateDebtItem(index: number, patch: Partial<DebtItemLine>) {
+    setDebtItems((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  }
+
+  function addDebtItem() {
+    setDebtItems((prev) => [...prev, emptyDebtItem()]);
+  }
+
+  function removeDebtItem(index: number) {
+    setDebtItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  const debtItemsTotal = debtItems.reduce(
+    (sum, l) => sum + Number(l.quantity || 0) * Number(l.unit_price || 0),
+    0,
+  );
+
+  function closeCreateModal() {
+    setShowCreate(false);
+    setForm(emptyForm(user?.shop_id ? String(user.shop_id) : ''));
+    setDebtItems([emptyDebtItem()]);
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
     setSubmitting(true);
     try {
+      const items = debtItems
+        .filter((l) => l.product_batch_id)
+        .map((l) => ({
+          product_batch_id: Number(l.product_batch_id),
+          quantity: Number(l.quantity),
+          unit_price: Number(l.unit_price),
+        }));
       await api.post('/client-debts', {
         shop_id: Number(form.shop_id),
         customer_id: Number(form.customer_id),
-        amount: Number(form.amount),
+        ...(items.length > 0 ? { items } : { amount: Number(form.amount) }),
         due_date: form.due_date || undefined,
         note: form.note || undefined,
       });
-      setShowCreate(false);
-      setForm(emptyForm(user?.shop_id ? String(user.shop_id) : ''));
+      closeCreateModal();
       load();
     } catch (err) {
       setFormError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
@@ -302,7 +358,14 @@ export function ClientDebtsPage() {
             )}
             {debts.map((d) => (
               <tr key={d.id}>
-                <td className="mono" data-label="Facture">{d.invoice_number ?? '—'}</td>
+                <td className="mono" data-label="Facture">
+                  {d.invoice_number ?? '—'}
+                  {debtProductsSummary(d) && (
+                    <span className="hint" style={{ display: 'block', fontWeight: 400 }}>
+                      {debtProductsSummary(d)}
+                    </span>
+                  )}
+                </td>
                 <td data-label="Client">
                   <button
                     type="button"
@@ -345,7 +408,7 @@ export function ClientDebtsPage() {
       </div>
 
       {showCreate && (
-        <Modal title="Nouvelle créance client" onClose={() => setShowCreate(false)}>
+        <Modal title="Nouvelle créance client" onClose={closeCreateModal}>
           <form onSubmit={handleCreate}>
             {formError && <div className="alert error">{formError}</div>}
             <div className="form-grid">
@@ -387,7 +450,85 @@ export function ClientDebtsPage() {
                 </button>
               </div>
               <div className="field">
-                <label htmlFor="cd-amount">Montant dû</label>
+                <label htmlFor="cd-due">Échéance (optionnel)</label>
+                <input id="cd-due" type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+              </div>
+              <div className="field">
+                <label htmlFor="cd-note">Note (optionnel)</label>
+                <input id="cd-note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="section-title">Produits vendus à crédit</div>
+            {!form.shop_id && <p className="hint">Choisissez une boutique pour sélectionner des produits.</p>}
+
+            {debtItems.map((line, i) => {
+              const batch = batches.find((b) => b.id === Number(line.product_batch_id));
+              return (
+                <div key={i} className="line-item-row">
+                  <div className="field">
+                    <label>Lot</label>
+                    <select
+                      value={line.product_batch_id}
+                      onChange={(e) => {
+                        const chosen = batches.find((b) => b.id === Number(e.target.value));
+                        updateDebtItem(i, {
+                          product_batch_id: e.target.value,
+                          unit_price: chosen ? String(chosen.min_price) : line.unit_price,
+                        });
+                      }}
+                    >
+                      <option value="">— choisir —</option>
+                      {batches.map((b) => (
+                        <option key={b.id} value={b.id} disabled={b.quantity_available === 0}>
+                          {b.product?.name ?? b.batch_code} — dispo {b.quantity_available} — min {formatMoney(b.min_price)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Qté</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={line.quantity}
+                      onChange={(e) => updateDebtItem(i, { quantity: e.target.value })}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Prix unitaire</label>
+                    <input
+                      type="number"
+                      min={batch ? Number(batch.min_price) : 0}
+                      value={line.unit_price}
+                      onChange={(e) => updateDebtItem(i, { unit_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Ligne</label>
+                    <div className="num" style={{ padding: '8px 0' }}>
+                      {formatMoney(Number(line.quantity || 0) * Number(line.unit_price || 0))}
+                    </div>
+                  </div>
+                  {debtItems.length > 1 && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeDebtItem(i)} aria-label="Retirer">
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button type="button" className="btn btn-sm" onClick={addDebtItem} style={{ marginBottom: 16 }}>
+              + Ajouter un article
+            </button>
+
+            {debtItems.some((l) => l.product_batch_id) ? (
+              <div className="alert success">
+                Total de la créance : <strong className="num">{formatMoney(debtItemsTotal)}</strong>
+              </div>
+            ) : (
+              <div className="field">
+                <label htmlFor="cd-amount">Montant dû (si aucun produit détaillé ci-dessus)</label>
                 <input
                   id="cd-amount"
                   type="number"
@@ -397,17 +538,10 @@ export function ClientDebtsPage() {
                   required
                 />
               </div>
-              <div className="field">
-                <label htmlFor="cd-due">Échéance (optionnel)</label>
-                <input id="cd-due" type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
-              </div>
-              <div className="field">
-                <label htmlFor="cd-note">Note (optionnel)</label>
-                <input id="cd-note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-              </div>
-            </div>
+            )}
+
             <div className="form-actions" style={{ marginTop: 16 }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
+              <button type="button" className="btn btn-ghost" onClick={closeCreateModal}>
                 Annuler
               </button>
               <button type="submit" className="btn btn-primary" disabled={submitting}>
@@ -547,11 +681,16 @@ export function ClientDebtsPage() {
                 <div className="catalog-aside-box" style={{ display: 'grid', gap: 6 }}>
                   {ficheCustomer.debts.length === 0 && <span className="hint">Aucune créance.</span>}
                   {ficheCustomer.debts.map((d) => (
-                    <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span>
-                        {d.invoice_number && <span className="mono">{d.invoice_number}</span>} {formatDate(d.created_at)} — {formatMoney(d.amount)}
-                      </span>
-                      <span className={`badge ${STATUS_BADGE[d.status]}`}>{STATUS_LABEL[d.status]}</span>
+                    <div key={d.id} style={{ display: 'grid', gap: 2, fontSize: 13 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>
+                          {d.invoice_number && <span className="mono">{d.invoice_number}</span>} {formatDate(d.created_at)} — {formatMoney(d.amount)}
+                        </span>
+                        <span className={`badge ${STATUS_BADGE[d.status]}`}>{STATUS_LABEL[d.status]}</span>
+                      </div>
+                      {debtProductsSummary(d) && (
+                        <span className="hint" style={{ paddingLeft: 8 }}>{debtProductsSummary(d)}</span>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -65,7 +65,11 @@ class CustomerController extends Controller
             abort(403, "Vous n'avez pas accès à ce client.");
         }
 
-        $debts = $customer->debts()->with('createdByUser')->withSum('payments', 'amount')->latest()->get();
+        $debts = $customer->debts()
+            ->with(['createdByUser', 'items.productBatch.product'])
+            ->withSum('payments', 'amount')
+            ->latest()
+            ->get();
         $totalDebt = round((float) $debts->sum('remaining'), 2);
         $creditLimit = $customer->credit_limit !== null ? (float) $customer->credit_limit : null;
 

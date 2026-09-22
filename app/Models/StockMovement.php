@@ -34,6 +34,8 @@ class StockMovement extends Model
 
     public const TYPE_DELETION = 'deletion';
 
+    public const TYPE_CREDIT_SALE = 'credit_sale';
+
     protected $fillable = [
         'product_batch_id',
         'shop_id',

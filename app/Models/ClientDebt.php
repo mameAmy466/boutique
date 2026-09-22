@@ -49,6 +49,11 @@ class ClientDebt extends Model
         return $this->hasMany(ClientDebtPayment::class);
     }
 
+    public function items(): HasMany
+    {
+        return $this->hasMany(ClientDebtItem::class);
+    }
+
     /**
      * Mirrors SupplierDebt::getPaidAmountAttribute() — see that model for
      * why the eager-loaded sum is preferred over a live query.

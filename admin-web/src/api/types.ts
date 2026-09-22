@@ -107,7 +107,8 @@ export type StockMovementType =
   | 'adjustment'
   | 'return'
   | 'price_correction'
-  | 'deletion';
+  | 'deletion'
+  | 'credit_sale';
 
 export interface UserActivityMovement {
   id: number;
@@ -352,6 +353,16 @@ export interface SupplierDebt {
   created_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 
+export interface ClientDebtItem {
+  id: number;
+  client_debt_id: number;
+  product_batch_id: number;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+  product_batch?: ProductBatch;
+}
+
 export interface ClientDebt {
   id: number;
   shop_id: number;
@@ -366,6 +377,7 @@ export interface ClientDebt {
   status: DebtStatus;
   customer?: Customer;
   created_by_user?: Pick<User, 'id' | 'name'> | null;
+  items?: ClientDebtItem[];
 }
 
 export type CashflowGroupBy = 'day' | 'week' | 'month' | 'year';
