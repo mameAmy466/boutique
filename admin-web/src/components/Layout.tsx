@@ -62,6 +62,8 @@ export function ProtectedLayout() {
     { to: '/journal-entries', label: 'Écritures', icon: <IconAudit /> },
     { to: '/grand-livre', label: 'Grand livre', icon: <IconCoin /> },
     { to: '/balance-comptable', label: 'Balance comptable', icon: <IconTrend /> },
+    { to: '/compte-de-resultat', label: 'Compte de résultat', icon: <IconTrend /> },
+    { to: '/bilan', label: 'Bilan', icon: <IconClipboard /> },
     ...(isSuperAdmin
       ? [
           { to: '/chart-of-accounts', label: 'Plan comptable', icon: <IconClipboard /> },

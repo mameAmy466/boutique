@@ -24,6 +24,8 @@ import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AccountPage } from './pages/AccountPage';
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { IncomeStatementPage } from './pages/IncomeStatementPage';
+import { BalanceSheetPage } from './pages/BalanceSheetPage';
 
 export default function App() {
   return (
@@ -54,6 +56,8 @@ export default function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+            <Route path="/compte-de-resultat" element={<IncomeStatementPage />} />
+            <Route path="/bilan" element={<BalanceSheetPage />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -230,6 +230,138 @@ class AccountingController extends Controller
     }
 
     /**
+     * Compte de résultat: charges and produits accounts over a period, with
+     * the net result (bénéfice or perte) they net out to.
+     */
+    public function incomeStatement(Request $request)
+    {
+        $this->authorize('viewAny', JournalEntry::class);
+
+        $actor = $request->user();
+        $shopId = $actor->isSuperAdmin()
+            ? ($request->filled('shop_id') ? $request->integer('shop_id') : null)
+            : $actor->shop_id;
+
+        $from = $request->filled('from') ? $request->date('from') : null;
+        $to = $request->filled('to') ? $request->date('to') : null;
+
+        $baseQuery = function () use ($shopId) {
+            return JournalEntryLine::query()
+                ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+                ->when($shopId, fn ($q) => $q->where('journal_entries.shop_id', $shopId));
+        };
+
+        $period = $baseQuery()
+            ->when($from, fn ($q) => $q->where('journal_entries.entry_date', '>=', $from->toDateString()))
+            ->when($to, fn ($q) => $q->where('journal_entries.entry_date', '<=', $to->toDateString()))
+            ->groupBy('journal_entry_lines.account_id')
+            ->selectRaw('journal_entry_lines.account_id as account_id, COALESCE(SUM(journal_entry_lines.debit), 0) as debit, COALESCE(SUM(journal_entry_lines.credit), 0) as credit')
+            ->get()
+            ->keyBy('account_id');
+
+        $accounts = Account::query()->whereIn('type', ['charge', 'produit'])->orderBy('code')->get();
+
+        $charges = [];
+        $produits = [];
+
+        foreach ($accounts as $account) {
+            $row = $period[$account->id] ?? null;
+            $debit = (float) ($row->debit ?? 0);
+            $credit = (float) ($row->credit ?? 0);
+
+            if ($debit === 0.0 && $credit === 0.0) {
+                continue;
+            }
+
+            $entry = ['account' => ['id' => $account->id, 'code' => $account->code, 'name' => $account->name]];
+
+            if ($account->type === 'charge') {
+                $entry['amount'] = round($debit - $credit, 2);
+                $charges[] = $entry;
+            } else {
+                $entry['amount'] = round($credit - $debit, 2);
+                $produits[] = $entry;
+            }
+        }
+
+        $totalCharges = round(array_sum(array_column($charges, 'amount')), 2);
+        $totalProduits = round(array_sum(array_column($produits, 'amount')), 2);
+
+        return response()->json([
+            'from' => $from?->toDateString(),
+            'to' => $to?->toDateString(),
+            'charges' => $charges,
+            'produits' => $produits,
+            'total_charges' => $totalCharges,
+            'total_produits' => $totalProduits,
+            'net_result' => round($totalProduits - $totalCharges, 2),
+        ]);
+    }
+
+    /**
+     * Bilan: actif and passif account balances as of a date (cumulative
+     * since the very first entry), with the not-yet-closed net result shown
+     * as the plug that makes actif = passif + résultat.
+     */
+    public function balanceSheet(Request $request)
+    {
+        $this->authorize('viewAny', JournalEntry::class);
+
+        $actor = $request->user();
+        $shopId = $actor->isSuperAdmin()
+            ? ($request->filled('shop_id') ? $request->integer('shop_id') : null)
+            : $actor->shop_id;
+
+        $to = $request->filled('to') ? $request->date('to') : null;
+
+        $balances = JournalEntryLine::query()
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+            ->when($shopId, fn ($q) => $q->where('journal_entries.shop_id', $shopId))
+            ->when($to, fn ($q) => $q->where('journal_entries.entry_date', '<=', $to->toDateString()))
+            ->groupBy('journal_entry_lines.account_id')
+            ->selectRaw('journal_entry_lines.account_id as account_id, COALESCE(SUM(journal_entry_lines.debit), 0) - COALESCE(SUM(journal_entry_lines.credit), 0) as balance')
+            ->get()
+            ->keyBy('account_id');
+
+        $accounts = Account::query()->orderBy('code')->get();
+
+        $actif = [];
+        $passif = [];
+        $totalCharges = 0.0;
+        $totalProduits = 0.0;
+
+        foreach ($accounts as $account) {
+            $balance = (float) ($balances[$account->id]->balance ?? 0);
+            if (abs($balance) < 0.005) {
+                continue;
+            }
+
+            $entry = ['account' => ['id' => $account->id, 'code' => $account->code, 'name' => $account->name]];
+
+            match ($account->type) {
+                'actif', 'tresorerie' => $actif[] = [...$entry, 'amount' => round($balance, 2)],
+                'passif' => $passif[] = [...$entry, 'amount' => round(-$balance, 2)],
+                'charge' => $totalCharges += $balance,
+                'produit' => $totalProduits += -$balance,
+                default => null,
+            };
+        }
+
+        $netResult = round($totalProduits - $totalCharges, 2);
+        $totalActif = round(array_sum(array_column($actif, 'amount')), 2);
+        $totalPassif = round(array_sum(array_column($passif, 'amount')), 2);
+
+        return response()->json([
+            'to' => $to?->toDateString(),
+            'actif' => $actif,
+            'passif' => $passif,
+            'net_result' => $netResult,
+            'total_actif' => $totalActif,
+            'total_passif' => round($totalPassif + $netResult, 2),
+        ]);
+    }
+
+    /**
      * The period key is always a real ISO date (the bucket's start day), so
      * ordering is a plain string sort and the frontend — already fluent in
      * fr-FR date formatting (see lib/format.ts) — derives the display label

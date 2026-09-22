@@ -511,3 +511,27 @@ export interface TrialBalance {
   rows: TrialBalanceRow[];
   totals: TrialBalanceTotals;
 }
+
+export interface FinancialStatementLine {
+  account: { id: number; code: string; name: string };
+  amount: number;
+}
+
+export interface IncomeStatement {
+  from: string | null;
+  to: string | null;
+  charges: FinancialStatementLine[];
+  produits: FinancialStatementLine[];
+  total_charges: number;
+  total_produits: number;
+  net_result: number;
+}
+
+export interface BalanceSheet {
+  to: string | null;
+  actif: FinancialStatementLine[];
+  passif: FinancialStatementLine[];
+  net_result: number;
+  total_actif: number;
+  total_passif: number;
+}
