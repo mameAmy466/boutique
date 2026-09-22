@@ -172,10 +172,9 @@ export function AccountPage() {
             <div>
               <span className="account-badge">{shopLabel}</span>
               <h2>{user.name}</h2>
-              <p>
-                {roleLabel}
-                <span> · </span>
-                {user.email}
+              <p className="account-hero-sub">
+                <span>{roleLabel}</span>
+                <span>{user.email}</span>
               </p>
             </div>
           </div>

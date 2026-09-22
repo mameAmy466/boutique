@@ -187,6 +187,25 @@ export function IconChevronDown(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconMenu(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3.5 5.5h13" />
+      <path d="M3.5 10h13" />
+      <path d="M3.5 14.5h13" />
+    </svg>
+  );
+}
+
+export function IconClose(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 5 15 15" />
+      <path d="M15 5 5 15" />
+    </svg>
+  );
+}
+
 export function IconMoon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>
