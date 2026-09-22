@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\JournalEntryController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\ShopController;
@@ -48,6 +49,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/stocks/{batch}/adjust', [StockController::class, 'adjust']);
     Route::post('/stocks/{batch}/shrinkage', [StockController::class, 'shrinkage']);
     Route::get('/stocks/movements', [StockController::class, 'movements']);
+
+    Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
+    Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive']);
+    Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel']);
 
     Route::get('/cash-registers', [CashRegisterController::class, 'index']);
     Route::post('/cash-registers', [CashRegisterController::class, 'store']);

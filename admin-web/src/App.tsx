@@ -23,6 +23,7 @@ import { BalanceComptablePage } from './pages/BalanceComptablePage';
 import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AccountPage } from './pages/AccountPage';
+import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
 
 export default function App() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
           </Route>
         </Routes>
       </AuthProvider>

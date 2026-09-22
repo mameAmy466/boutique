@@ -18,6 +18,7 @@ class ProductBatch extends Model
         'product_id',
         'shop_id',
         'supplier_id',
+        'purchase_order_item_id',
         'purchase_cost',
         'additional_costs',
         'cost_price',
@@ -54,6 +55,11 @@ class ProductBatch extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function purchaseOrderItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrderItem::class);
     }
 
     /**

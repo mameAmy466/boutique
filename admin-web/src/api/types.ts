@@ -441,6 +441,35 @@ export interface JournalEntry {
   created_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 
+export type PurchaseOrderStatus = 'ordered' | 'partially_received' | 'received' | 'cancelled';
+
+export interface PurchaseOrderItem {
+  id: number;
+  purchase_order_id: number;
+  product_id: number;
+  quantity_ordered: number;
+  unit_cost: string;
+  quantity_received: number;
+  remaining_quantity: number;
+  product?: Product;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  shop_id: number;
+  supplier_id: number;
+  reference: string;
+  status: PurchaseOrderStatus;
+  expected_date: string | null;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  supplier?: Supplier;
+  shop?: Shop;
+  items?: PurchaseOrderItem[];
+  created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
 export interface AccountLedgerMovement {
   entry_id: number;
   entry_date: string;

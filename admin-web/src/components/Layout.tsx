@@ -15,6 +15,7 @@ import {
   IconGrid,
   IconReceipt,
   IconRegister,
+  IconSend,
   IconSettings,
   IconShop,
   IconTag,
@@ -99,6 +100,15 @@ export function ProtectedLayout() {
           icon={<IconTruck />}
           items={[{ to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> }]}
         />
+
+        {isAdmin && (
+          <NavGroup
+            id="purchasing"
+            label="Achats"
+            icon={<IconSend />}
+            items={[{ to: '/purchase-orders', label: 'Bons de commande', icon: <IconSend /> }]}
+          />
+        )}
 
         {isAdmin && <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />}
 
