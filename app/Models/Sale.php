@@ -20,6 +20,8 @@ class Sale extends Model
 
     public const STATUS_PARTIALLY_RETURNED = 'partially_returned';
 
+    public const PAYMENT_METHODS = ['cash', 'card', 'wave', 'orange_money', 'free_money', 'transfer', 'other'];
+
     protected $fillable = [
         'sale_number',
         'shop_id',

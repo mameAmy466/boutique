@@ -20,6 +20,7 @@ class SaleService
     public function __construct(
         private readonly PricingService $pricing,
         private readonly InvoiceService $invoices,
+        private readonly AccountingEntryService $accounting,
     ) {}
 
     /**
@@ -38,7 +39,7 @@ class SaleService
         ?string $customerName = null,
         float $discount = 0,
     ): Sale {
-        return DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount) {
+        $sale = DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount) {
             $subtotal = 0;
             $totalCost = 0;
             $lines = [];
@@ -139,11 +140,15 @@ class SaleService
 
             return $sale->load(['items', 'invoice']);
         });
+
+        $this->accounting->recordSale($sale);
+
+        return $sale;
     }
 
     public function cancelSale(Sale $sale, User $actor, string $reason): Sale
     {
-        return DB::transaction(function () use ($sale, $actor, $reason) {
+        $sale = DB::transaction(function () use ($sale, $actor, $reason) {
             $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
 
             if ($sale->status !== Sale::STATUS_COMPLETED) {
@@ -175,5 +180,9 @@ class SaleService
 
             return $sale;
         });
+
+        $this->accounting->recordSaleCancellation($sale);
+
+        return $sale;
     }
 }

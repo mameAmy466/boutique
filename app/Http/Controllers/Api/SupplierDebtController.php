@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\DebtInUseException;
 use App\Http\Controllers\Controller;
+use App\Models\Sale;
 use App\Models\SupplierDebt;
+use App\Services\AccountingEntryService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SupplierDebtController extends Controller
 {
+    public function __construct(private readonly AccountingEntryService $accounting) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', SupplierDebt::class);
@@ -50,6 +55,8 @@ class SupplierDebtController extends Controller
 
         $debt = SupplierDebt::create([...$data, 'created_by' => $actor->id]);
 
+        $this->accounting->recordSupplierDebtCreated($debt);
+
         return response()->json($debt->load(['supplier', 'createdByUser']), 201);
     }
 
@@ -86,6 +93,7 @@ class SupplierDebtController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_method' => ['nullable', Rule::in(Sale::PAYMENT_METHODS)],
             'paid_at' => ['required', 'date'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -97,7 +105,13 @@ class SupplierDebtController extends Controller
             ));
         }
 
-        $supplierDebt->payments()->create([...$data, 'created_by' => $request->user()->id]);
+        $payment = $supplierDebt->payments()->create([
+            ...$data,
+            'payment_method' => $data['payment_method'] ?? 'cash',
+            'created_by' => $request->user()->id,
+        ]);
+
+        $this->accounting->recordSupplierDebtPayment($payment);
 
         return response()->json(
             $supplierDebt->fresh(['supplier', 'createdByUser'])->loadSum('payments', 'amount')

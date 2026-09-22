@@ -13,6 +13,7 @@ class SupplierDebtPayment extends Model
     protected $fillable = [
         'supplier_debt_id',
         'amount',
+        'payment_method',
         'paid_at',
         'note',
         'created_by',

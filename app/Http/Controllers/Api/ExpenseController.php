@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
+use App\Models\Sale;
+use App\Services\AccountingEntryService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
+    public function __construct(private readonly AccountingEntryService $accounting) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Expense::class);
@@ -49,6 +53,7 @@ class ExpenseController extends Controller
             'category' => ['required', Rule::in(Expense::CATEGORIES)],
             'label' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_method' => ['nullable', Rule::in(Sale::PAYMENT_METHODS)],
             'expense_date' => ['required', 'date'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -57,7 +62,9 @@ class ExpenseController extends Controller
             abort(403, 'Vous ne pouvez enregistrer une dépense que pour votre propre boutique.');
         }
 
-        $expense = Expense::create([...$data, 'created_by' => $actor->id]);
+        $expense = Expense::create([...$data, 'payment_method' => $data['payment_method'] ?? 'cash', 'created_by' => $actor->id]);
+
+        $this->accounting->recordExpense($expense);
 
         return response()->json($expense->load('createdByUser'), 201);
     }
@@ -70,6 +77,7 @@ class ExpenseController extends Controller
             'category' => ['sometimes', Rule::in(Expense::CATEGORIES)],
             'label' => ['nullable', 'string', 'max:255'],
             'amount' => ['sometimes', 'numeric', 'min:0.01'],
+            'payment_method' => ['sometimes', Rule::in(Sale::PAYMENT_METHODS)],
             'expense_date' => ['sometimes', 'date'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);

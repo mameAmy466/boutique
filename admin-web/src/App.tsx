@@ -15,6 +15,9 @@ import { ExpensesPage } from './pages/ExpensesPage';
 import { CashflowPage } from './pages/CashflowPage';
 import { SupplierDebtsPage } from './pages/SupplierDebtsPage';
 import { ClientDebtsPage } from './pages/ClientDebtsPage';
+import { ChartOfAccountsPage } from './pages/ChartOfAccountsPage';
+import { AccountingRulesPage } from './pages/AccountingRulesPage';
+import { JournalEntriesPage } from './pages/JournalEntriesPage';
 import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AccountPage } from './pages/AccountPage';
@@ -39,6 +42,9 @@ export default function App() {
             <Route path="/cashflow" element={<CashflowPage />} />
             <Route path="/supplier-debts" element={<SupplierDebtsPage />} />
             <Route path="/client-debts" element={<ClientDebtsPage />} />
+            <Route path="/chart-of-accounts" element={<ChartOfAccountsPage />} />
+            <Route path="/accounting-rules" element={<AccountingRulesPage />} />
+            <Route path="/journal-entries" element={<JournalEntriesPage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account" element={<AccountPage />} />
