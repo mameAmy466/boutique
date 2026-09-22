@@ -54,8 +54,8 @@ export function BarcodeScannerModal({
               <video ref={videoRef} muted playsInline />
             </div>
             <p className="hint" style={{ marginTop: 10 }}>
-              Vise l'étiquette (QR code) du lot avec la caméra. La vente se complète automatiquement dès qu'un code
-              valide est détecté.
+              Vise l'étiquette (code-barres) du lot avec la caméra. La vente se complète automatiquement dès qu'un
+              code valide est détecté.
             </p>
           </>
         )}
