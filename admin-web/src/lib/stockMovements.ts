@@ -13,6 +13,7 @@ export const STOCK_MOVEMENT_LABEL: Record<StockMovementType, string> = {
   return: 'Retour',
   price_correction: 'Correction de prix',
   deletion: 'Suppression de lot',
+  credit_sale: 'Vente à crédit',
 };
 
 export const STOCK_MOVEMENT_BADGE: Record<StockMovementType, string> = {
@@ -28,4 +29,5 @@ export const STOCK_MOVEMENT_BADGE: Record<StockMovementType, string> = {
   return: 'neutral',
   price_correction: 'warn',
   deletion: 'bad',
+  credit_sale: 'neutral',
 };
