@@ -38,8 +38,9 @@ class SaleService
         string $paymentMethod,
         ?string $customerName = null,
         float $discount = 0,
+        float $taxRate = 18.00,
     ): Sale {
-        $sale = DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount) {
+        $sale = DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount, $taxRate) {
             $subtotal = 0;
             $totalCost = 0;
             $lines = [];
@@ -104,6 +105,7 @@ class SaleService
                 'total' => $total,
                 'payment_method' => $paymentMethod,
                 'status' => Sale::STATUS_COMPLETED,
+                'tax_rate' => $taxRate,
             ]);
 
             $sale->update([

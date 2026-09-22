@@ -56,6 +56,7 @@ class SaleController extends Controller
             'cash_session_id' => ['required', 'exists:cash_sessions,id'],
             'customer_name' => ['nullable', 'string', 'max:255'],
             'discount' => ['nullable', 'numeric', 'min:0'],
+            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_batch_id' => ['required', 'exists:product_batches,id'],
@@ -81,6 +82,7 @@ class SaleController extends Controller
             paymentMethod: $data['payment_method'],
             customerName: $data['customer_name'] ?? null,
             discount: $data['discount'] ?? 0,
+            taxRate: $data['tax_rate'] ?? 18.00,
         );
 
         return response()->json($sale, 201);

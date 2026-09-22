@@ -278,6 +278,7 @@ export function ClientDebtsPage() {
         <table>
           <thead>
             <tr>
+              <th>Facture</th>
               <th>Client</th>
               {isSuperAdmin && <th>Boutique</th>}
               <th>Montant</th>
@@ -291,16 +292,17 @@ export function ClientDebtsPage() {
           <tbody>
             {loading && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 8 : 7}>Chargement…</td>
+                <td colSpan={isSuperAdmin ? 9 : 8}>Chargement…</td>
               </tr>
             )}
             {!loading && debts.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={isSuperAdmin ? 8 : 7}>Aucune créance client enregistrée.</td>
+                <td colSpan={isSuperAdmin ? 9 : 8}>Aucune créance client enregistrée.</td>
               </tr>
             )}
             {debts.map((d) => (
               <tr key={d.id}>
+                <td className="mono" data-label="Facture">{d.invoice_number ?? '—'}</td>
                 <td data-label="Client">
                   <button
                     type="button"
@@ -546,7 +548,9 @@ export function ClientDebtsPage() {
                   {ficheCustomer.debts.length === 0 && <span className="hint">Aucune créance.</span>}
                   {ficheCustomer.debts.map((d) => (
                     <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span>{formatDate(d.created_at)} — {formatMoney(d.amount)}</span>
+                      <span>
+                        {d.invoice_number && <span className="mono">{d.invoice_number}</span>} {formatDate(d.created_at)} — {formatMoney(d.amount)}
+                      </span>
                       <span className={`badge ${STATUS_BADGE[d.status]}`}>{STATUS_LABEL[d.status]}</span>
                     </div>
                   ))}

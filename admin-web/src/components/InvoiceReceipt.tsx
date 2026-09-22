@@ -12,8 +12,15 @@ const PAYMENT_LABEL: Record<string, string> = {
 };
 
 export function InvoiceReceipt({ sale, shop }: { sale: Sale; shop: Shop | null }) {
+  const isVoided = sale.status === 'cancelled';
+
   return (
     <div className="receipt">
+      {isVoided && (
+        <div className="alert error" style={{ marginBottom: 12, textAlign: 'center', fontWeight: 700 }}>
+          FACTURE ANNULÉE — AVOIR
+        </div>
+      )}
       <div className="receipt-head">
         <div className="receipt-brand">Boutique</div>
         {shop && (
@@ -67,8 +74,16 @@ export function InvoiceReceipt({ sale, shop }: { sale: Sale; shop: Shop | null }
             <span className="num">-{formatMoney(sale.discount)}</span>
           </div>
         )}
+        <div>
+          <span>Total HT</span>
+          <span className="num">{formatMoney(sale.subtotal_ht)}</span>
+        </div>
+        <div>
+          <span>{Number(sale.tax_rate) > 0 ? `TVA (${sale.tax_rate}%)` : 'TVA'}</span>
+          <span className="num">{Number(sale.tax_rate) > 0 ? formatMoney(sale.tax_amount) : 'Exonéré'}</span>
+        </div>
         <div className="receipt-total-line">
-          <span>Total</span>
+          <span>Total TTC</span>
           <span className="num">{formatMoney(sale.total)}</span>
         </div>
         <div>

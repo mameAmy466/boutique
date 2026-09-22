@@ -219,6 +219,9 @@ export interface Sale {
   subtotal: string;
   discount: string;
   total: string;
+  tax_rate: string;
+  tax_amount: number;
+  subtotal_ht: number;
   payment_method: PaymentMethod;
   status: 'completed' | 'cancelled' | 'returned' | 'partially_returned';
   created_at: string;
@@ -352,6 +355,7 @@ export interface ClientDebt {
   id: number;
   shop_id: number;
   customer_id: number;
+  invoice_number: string | null;
   amount: string;
   due_date: string | null;
   note: string | null;

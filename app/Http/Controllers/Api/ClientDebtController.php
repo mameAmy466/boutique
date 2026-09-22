@@ -68,6 +68,7 @@ class ClientDebtController extends Controller
         }
 
         $debt = ClientDebt::create([...$data, 'created_by' => $actor->id]);
+        $debt->update(['invoice_number' => sprintf('FAC-CR-%d-%06d', now()->year, $debt->id)]);
 
         $this->accounting->recordClientDebtCreated($debt);
 
