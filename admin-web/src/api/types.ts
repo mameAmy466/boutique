@@ -418,3 +418,45 @@ export interface JournalEntry {
   lines?: JournalEntryLine[];
   created_by_user?: Pick<User, 'id' | 'name'> | null;
 }
+
+export interface AccountLedgerMovement {
+  entry_id: number;
+  entry_date: string;
+  reference: string | null;
+  label: string;
+  journal_code: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface AccountLedger {
+  account: Account;
+  from: string | null;
+  to: string | null;
+  opening_balance: number;
+  movements: AccountLedgerMovement[];
+  closing_balance: number;
+}
+
+export interface TrialBalanceRow {
+  account: Pick<Account, 'id' | 'code' | 'name' | 'type'>;
+  opening_balance: number;
+  debit: number;
+  credit: number;
+  closing_balance: number;
+}
+
+export interface TrialBalanceTotals {
+  opening_balance: number;
+  debit: number;
+  credit: number;
+  closing_balance: number;
+}
+
+export interface TrialBalance {
+  from: string | null;
+  to: string | null;
+  rows: TrialBalanceRow[];
+  totals: TrialBalanceTotals;
+}

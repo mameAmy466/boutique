@@ -75,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/client-debts/{clientDebt}/payments', [ClientDebtController::class, 'addPayment']);
 
     Route::get('/accounting/cashflow', [AccountingController::class, 'cashflow']);
+    Route::get('/accounting/balance', [AccountingController::class, 'trialBalance']);
+    Route::get('/accounting/ledger/{account}', [AccountingController::class, 'ledger']);
 
     Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::apiResource('accounting-journals', AccountingJournalController::class)->only(['index', 'store', 'update', 'destroy']);

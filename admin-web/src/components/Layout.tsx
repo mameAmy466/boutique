@@ -11,12 +11,14 @@ import {
   IconBox,
   IconCashDrawer,
   IconClipboard,
+  IconCoin,
   IconGrid,
   IconReceipt,
   IconRegister,
   IconSettings,
   IconShop,
   IconTag,
+  IconTrend,
   IconTruck,
   IconUsers,
 } from './DashboardIcons';
@@ -57,6 +59,8 @@ export function ProtectedLayout() {
     { to: '/supplier-debts', label: 'Dettes fournisseurs', icon: <IconTruck /> },
     { to: '/client-debts', label: 'Créances clients', icon: <IconBag /> },
     { to: '/journal-entries', label: 'Écritures', icon: <IconAudit /> },
+    { to: '/grand-livre', label: 'Grand livre', icon: <IconCoin /> },
+    { to: '/balance-comptable', label: 'Balance comptable', icon: <IconTrend /> },
     ...(isSuperAdmin
       ? [
           { to: '/chart-of-accounts', label: 'Plan comptable', icon: <IconClipboard /> },

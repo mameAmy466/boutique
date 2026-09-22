@@ -18,6 +18,8 @@ import { ClientDebtsPage } from './pages/ClientDebtsPage';
 import { ChartOfAccountsPage } from './pages/ChartOfAccountsPage';
 import { AccountingRulesPage } from './pages/AccountingRulesPage';
 import { JournalEntriesPage } from './pages/JournalEntriesPage';
+import { GrandLivrePage } from './pages/GrandLivrePage';
+import { BalanceComptablePage } from './pages/BalanceComptablePage';
 import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AccountPage } from './pages/AccountPage';
@@ -45,6 +47,8 @@ export default function App() {
             <Route path="/chart-of-accounts" element={<ChartOfAccountsPage />} />
             <Route path="/accounting-rules" element={<AccountingRulesPage />} />
             <Route path="/journal-entries" element={<JournalEntriesPage />} />
+            <Route path="/grand-livre" element={<GrandLivrePage />} />
+            <Route path="/balance-comptable" element={<BalanceComptablePage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account" element={<AccountPage />} />

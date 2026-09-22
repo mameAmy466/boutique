@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
+use App\Models\AccountingJournal;
 use App\Models\Expense;
+use App\Models\JournalEntry;
+use App\Models\JournalEntryLine;
 use App\Models\Sale;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -71,6 +75,158 @@ class AccountingController extends Controller
         }
 
         return response()->json($this->bucket($days, $groupBy));
+    }
+
+    /**
+     * Per-account ledger (grand livre) with a running debit-minus-credit
+     * balance: positive = solde débiteur, negative = solde créditeur.
+     */
+    public function ledger(Request $request, Account $account)
+    {
+        $this->authorize('viewAny', JournalEntry::class);
+
+        $actor = $request->user();
+        $shopId = $actor->isSuperAdmin()
+            ? ($request->filled('shop_id') ? $request->integer('shop_id') : null)
+            : $actor->shop_id;
+
+        $from = $request->filled('from') ? $request->date('from') : null;
+        $to = $request->filled('to') ? $request->date('to') : null;
+
+        $baseQuery = function () use ($account, $shopId) {
+            return JournalEntryLine::query()
+                ->where('journal_entry_lines.account_id', $account->id)
+                ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+                ->when($shopId, fn ($q) => $q->where('journal_entries.shop_id', $shopId));
+        };
+
+        $opening = 0.0;
+        if ($from) {
+            $opening = (float) $baseQuery()
+                ->where('journal_entries.entry_date', '<', $from->toDateString())
+                ->selectRaw('COALESCE(SUM(journal_entry_lines.debit), 0) - COALESCE(SUM(journal_entry_lines.credit), 0) as balance')
+                ->value('balance');
+        }
+
+        $journalCodes = AccountingJournal::query()->pluck('code', 'id');
+
+        $rows = $baseQuery()
+            ->when($from, fn ($q) => $q->where('journal_entries.entry_date', '>=', $from->toDateString()))
+            ->when($to, fn ($q) => $q->where('journal_entries.entry_date', '<=', $to->toDateString()))
+            ->orderBy('journal_entries.entry_date')
+            ->orderBy('journal_entries.id')
+            ->get([
+                'journal_entry_lines.debit',
+                'journal_entry_lines.credit',
+                'journal_entries.id as entry_id',
+                'journal_entries.entry_date',
+                'journal_entries.reference',
+                'journal_entries.label',
+                'journal_entries.journal_id',
+            ]);
+
+        $balance = $opening;
+        $movements = $rows->map(function ($row) use (&$balance, $journalCodes) {
+            $balance += (float) $row->debit - (float) $row->credit;
+
+            return [
+                'entry_id' => $row->entry_id,
+                'entry_date' => Carbon::parse($row->entry_date)->toDateString(),
+                'reference' => $row->reference,
+                'label' => $row->label,
+                'journal_code' => $journalCodes[$row->journal_id] ?? '—',
+                'debit' => (float) $row->debit,
+                'credit' => (float) $row->credit,
+                'balance' => round($balance, 2),
+            ];
+        })->values();
+
+        return response()->json([
+            'account' => $account,
+            'from' => $from?->toDateString(),
+            'to' => $to?->toDateString(),
+            'opening_balance' => round($opening, 2),
+            'movements' => $movements,
+            'closing_balance' => round($balance, 2),
+        ]);
+    }
+
+    /**
+     * Trial balance (balance comptable): per account, opening balance, period
+     * debit/credit totals and closing balance. Only accounts that are active
+     * or have movement in scope are listed.
+     */
+    public function trialBalance(Request $request)
+    {
+        $this->authorize('viewAny', JournalEntry::class);
+
+        $actor = $request->user();
+        $shopId = $actor->isSuperAdmin()
+            ? ($request->filled('shop_id') ? $request->integer('shop_id') : null)
+            : $actor->shop_id;
+
+        $from = $request->filled('from') ? $request->date('from') : null;
+        $to = $request->filled('to') ? $request->date('to') : null;
+
+        $baseQuery = function () use ($shopId) {
+            return JournalEntryLine::query()
+                ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+                ->when($shopId, fn ($q) => $q->where('journal_entries.shop_id', $shopId));
+        };
+
+        $opening = $from
+            ? $baseQuery()
+                ->where('journal_entries.entry_date', '<', $from->toDateString())
+                ->groupBy('journal_entry_lines.account_id')
+                ->selectRaw('journal_entry_lines.account_id as account_id, COALESCE(SUM(journal_entry_lines.debit), 0) - COALESCE(SUM(journal_entry_lines.credit), 0) as balance')
+                ->get()
+                ->keyBy('account_id')
+            : collect();
+
+        $period = $baseQuery()
+            ->when($from, fn ($q) => $q->where('journal_entries.entry_date', '>=', $from->toDateString()))
+            ->when($to, fn ($q) => $q->where('journal_entries.entry_date', '<=', $to->toDateString()))
+            ->groupBy('journal_entry_lines.account_id')
+            ->selectRaw('journal_entry_lines.account_id as account_id, COALESCE(SUM(journal_entry_lines.debit), 0) as debit, COALESCE(SUM(journal_entry_lines.credit), 0) as credit')
+            ->get()
+            ->keyBy('account_id');
+
+        $movedAccountIds = $opening->keys()->merge($period->keys())->unique();
+
+        $accounts = Account::query()
+            ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $movedAccountIds))
+            ->orderBy('code')
+            ->get();
+
+        $rows = $accounts->map(function (Account $account) use ($opening, $period) {
+            $openingBalance = (float) ($opening[$account->id]->balance ?? 0);
+            $debit = (float) ($period[$account->id]->debit ?? 0);
+            $credit = (float) ($period[$account->id]->credit ?? 0);
+
+            return [
+                'account' => ['id' => $account->id, 'code' => $account->code, 'name' => $account->name, 'type' => $account->type],
+                'opening_balance' => round($openingBalance, 2),
+                'debit' => round($debit, 2),
+                'credit' => round($credit, 2),
+                'closing_balance' => round($openingBalance + $debit - $credit, 2),
+            ];
+        })->filter(function ($row) {
+            return $row['opening_balance'] !== 0.0 || $row['debit'] !== 0.0 || $row['credit'] !== 0.0 || $row['closing_balance'] !== 0.0;
+        })->values();
+
+        $totals = [
+            'opening_balance' => round($rows->sum('opening_balance'), 2),
+            'debit' => round($rows->sum('debit'), 2),
+            'credit' => round($rows->sum('credit'), 2),
+            'closing_balance' => round($rows->sum('closing_balance'), 2),
+        ];
+
+        return response()->json([
+            'from' => $from?->toDateString(),
+            'to' => $to?->toDateString(),
+            'rows' => $rows,
+            'totals' => $totals,
+        ]);
     }
 
     /**
