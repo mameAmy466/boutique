@@ -289,6 +289,7 @@ export interface Expense {
   category: ExpenseCategory;
   label: string | null;
   amount: string;
+  payment_method: PaymentMethod;
   expense_date: string;
   note: string | null;
   created_by: number | null;
@@ -351,4 +352,69 @@ export interface CashflowBucket {
   entrees: number;
   sorties: number;
   net: number;
+}
+
+export type AccountType = 'actif' | 'passif' | 'tresorerie' | 'charge' | 'produit';
+
+export interface Account {
+  id: number;
+  code: string;
+  name: string;
+  type: AccountType;
+  is_active: boolean;
+}
+
+export interface AccountingJournal {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export type AccountingEvent =
+  | 'sale'
+  | 'expense'
+  | 'supplier_debt_created'
+  | 'supplier_debt_payment'
+  | 'client_debt_created'
+  | 'client_debt_payment';
+
+export interface AccountingRule {
+  id: number;
+  event: AccountingEvent;
+  category: ExpenseCategory | null;
+  dynamic_leg: 'debit' | 'credit' | null;
+  dynamic_journal: boolean;
+  debit_account_id: number | null;
+  credit_account_id: number | null;
+  journal_id: number | null;
+  note: string | null;
+  debit_account?: Account | null;
+  credit_account?: Account | null;
+  journal?: AccountingJournal | null;
+}
+
+export interface JournalEntryLine {
+  id: number;
+  journal_entry_id: number;
+  account_id: number;
+  debit: string;
+  credit: string;
+  label: string | null;
+  account?: Account;
+}
+
+export interface JournalEntry {
+  id: number;
+  journal_id: number;
+  shop_id: number;
+  entry_date: string;
+  reference: string | null;
+  label: string;
+  source_type: string | null;
+  source_id: number | null;
+  created_by: number | null;
+  journal?: AccountingJournal;
+  shop?: Shop;
+  lines?: JournalEntryLine[];
+  created_by_user?: Pick<User, 'id' | 'name'> | null;
 }

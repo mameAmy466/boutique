@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\Shop;
 use App\Services\SaleService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SaleController extends Controller
 {
@@ -55,7 +56,7 @@ class SaleController extends Controller
             'cash_session_id' => ['required', 'exists:cash_sessions,id'],
             'customer_name' => ['nullable', 'string', 'max:255'],
             'discount' => ['nullable', 'numeric', 'min:0'],
-            'payment_method' => ['required', 'in:cash,card,wave,orange_money,free_money,transfer,other'],
+            'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_batch_id' => ['required', 'exists:product_batches,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],

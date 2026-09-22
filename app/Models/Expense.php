@@ -28,6 +28,7 @@ class Expense extends Model
         'category',
         'label',
         'amount',
+        'payment_method',
         'expense_date',
         'note',
         'created_by',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\AccountInUseException;
 use App\Exceptions\BatchInUseException;
 use App\Exceptions\DebtInUseException;
 use App\Exceptions\InsufficientStockException;
@@ -55,6 +56,10 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (DebtInUseException $e, $request) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        });
+
+        $exceptions->render(function (AccountInUseException $e, $request) {
             return response()->json(['message' => $e->getMessage()], 422);
         });
     })->create();

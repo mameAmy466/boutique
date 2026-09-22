@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AccountingController;
+use App\Http\Controllers\Api\AccountingJournalController;
+use App\Http\Controllers\Api\AccountingRuleController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
@@ -10,6 +13,7 @@ use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\JournalEntryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaleController;
@@ -71,4 +75,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/client-debts/{clientDebt}/payments', [ClientDebtController::class, 'addPayment']);
 
     Route::get('/accounting/cashflow', [AccountingController::class, 'cashflow']);
+
+    Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::apiResource('accounting-journals', AccountingJournalController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::apiResource('accounting-rules', AccountingRuleController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/journal-entries', [JournalEntryController::class, 'index']);
 });

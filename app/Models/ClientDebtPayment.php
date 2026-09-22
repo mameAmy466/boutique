@@ -13,6 +13,7 @@ class ClientDebtPayment extends Model
     protected $fillable = [
         'client_debt_id',
         'amount',
+        'payment_method',
         'paid_at',
         'note',
         'created_by',

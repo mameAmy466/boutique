@@ -56,6 +56,13 @@ export function ProtectedLayout() {
     { to: '/cashflow', label: 'Trésorerie', icon: <IconBank /> },
     { to: '/supplier-debts', label: 'Dettes fournisseurs', icon: <IconTruck /> },
     { to: '/client-debts', label: 'Créances clients', icon: <IconBag /> },
+    { to: '/journal-entries', label: 'Écritures', icon: <IconAudit /> },
+    ...(isSuperAdmin
+      ? [
+          { to: '/chart-of-accounts', label: 'Plan comptable', icon: <IconClipboard /> },
+          { to: '/accounting-rules', label: 'Règles comptables', icon: <IconSettings /> },
+        ]
+      : []),
   ];
 
   return (
