@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
-import type { Supplier } from '../api/types';
+import type { Supplier, SupplierFiche } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { initials } from '../lib/format';
+import { formatMoney, initials } from '../lib/format';
 
 function emptyForm() {
-  return { name: '', phone: '', email: '', address: '' };
+  return { name: '', tax_id: '', phone: '', email: '', address: '', payment_terms_days: '' };
+}
+
+function paymentTermsLabel(days: number | null): string {
+  if (!days) return 'Comptant';
+  return `${days} jours`;
 }
 
 export function SuppliersPage() {
@@ -33,6 +38,8 @@ export function SuppliersPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [fiche, setFiche] = useState<SupplierFiche | null>(null);
+  const [ficheLoading, setFicheLoading] = useState(false);
 
   function load() {
     setLoading(true);
@@ -68,6 +75,19 @@ export function SuppliersPage() {
     }
   }, [filtered, selectedId]);
 
+  useEffect(() => {
+    if (!selectedId) {
+      setFiche(null);
+      return;
+    }
+    setFicheLoading(true);
+    api
+      .get<SupplierFiche>(`/suppliers/${selectedId}`)
+      .then(setFiche)
+      .catch(() => setFiche(null))
+      .finally(() => setFicheLoading(false));
+  }, [selectedId]);
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -75,9 +95,11 @@ export function SuppliersPage() {
     try {
       await api.post('/suppliers', {
         name: form.name,
+        tax_id: form.tax_id || undefined,
         phone: form.phone || undefined,
         email: form.email || undefined,
         address: form.address || undefined,
+        payment_terms_days: form.payment_terms_days ? Number(form.payment_terms_days) : undefined,
       });
       setShowCreate(false);
       setForm(emptyForm());
@@ -93,9 +115,11 @@ export function SuppliersPage() {
     setEditError(null);
     setEditForm({
       name: supplier.name,
+      tax_id: supplier.tax_id ?? '',
       phone: supplier.phone ?? '',
       email: supplier.email ?? '',
       address: supplier.address ?? '',
+      payment_terms_days: supplier.payment_terms_days ? String(supplier.payment_terms_days) : '',
     });
     setEditSupplier(supplier);
   }
@@ -108,12 +132,17 @@ export function SuppliersPage() {
     try {
       await api.put(`/suppliers/${editSupplier.id}`, {
         name: editForm.name,
+        tax_id: editForm.tax_id || undefined,
         phone: editForm.phone || undefined,
         email: editForm.email || undefined,
         address: editForm.address || undefined,
+        payment_terms_days: editForm.payment_terms_days ? Number(editForm.payment_terms_days) : undefined,
       });
       setEditSupplier(null);
       load();
+      if (selectedId === editSupplier.id) {
+        api.get<SupplierFiche>(`/suppliers/${editSupplier.id}`).then(setFiche);
+      }
     } catch (err) {
       setEditError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
     } finally {
@@ -226,6 +255,17 @@ export function SuppliersPage() {
           <h2>Fiche fournisseur</h2>
           {selected ? (
             <>
+              <div className="catalog-aside-product">
+                <div className="catalog-row-avatar letter">{initials(selected.name)}</div>
+                <div>
+                  <strong>{selected.name}</strong>
+                  <span>{selected.phone || 'Pas de téléphone'}</span>
+                </div>
+              </div>
+              <div className="catalog-aside-block">
+                <span className="label">NINEA / identifiant fiscal</span>
+                <div className="catalog-aside-box">{selected.tax_id || '—'}</div>
+              </div>
               <div className="catalog-aside-block">
                 <span className="label">Adresse</span>
                 <div className="catalog-aside-box">{selected.address || '—'}</div>
@@ -234,23 +274,31 @@ export function SuppliersPage() {
                 <span className="label">Email</span>
                 <div className="catalog-aside-box">{selected.email || '—'}</div>
               </div>
-              <div className="catalog-aside-product">
-                <div className="catalog-row-avatar letter">{initials(selected.name)}</div>
-                <div>
-                  <strong>{selected.name}</strong>
-                  <span>{selected.phone || 'Pas de téléphone'}</span>
-                </div>
-              </div>
               <div className="catalog-totals">
                 <div>
-                  <span>Téléphone</span>
-                  <span>{selected.phone || '—'}</span>
+                  <span>Conditions de paiement</span>
+                  <span>{paymentTermsLabel(selected.payment_terms_days)}</span>
                 </div>
                 <div className="total">
-                  <span>Contact</span>
-                  <span>{selected.email || selected.phone || '—'}</span>
+                  <span>{fiche?.consolidated ? 'Solde dû — toutes boutiques' : 'Solde dû — cette boutique'}</span>
+                  <span>{ficheLoading ? '…' : formatMoney(fiche?.total_debt ?? 0)}</span>
                 </div>
               </div>
+              {fiche && fiche.debts.length > 0 && (
+                <div className="catalog-aside-block">
+                  <span className="label">Dernières dettes</span>
+                  <div className="catalog-aside-box" style={{ display: 'grid', gap: 6 }}>
+                    {fiche.debts.slice(0, 5).map((d) => (
+                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span>{formatMoney(d.amount)}</span>
+                        <span className={`badge ${d.status === 'paid' ? 'ok' : d.status === 'partial' ? 'warn' : 'bad'}`}>
+                          reste {formatMoney(d.remaining)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {canManage && (
                 <button type="button" className="btn btn-primary" onClick={() => openEdit(selected)}>
                   Modifier
@@ -284,6 +332,10 @@ export function SuppliersPage() {
                 <input id="sup-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="field">
+                <label htmlFor="sup-tax-id">NINEA / identifiant fiscal</label>
+                <input id="sup-tax-id" value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} />
+              </div>
+              <div className="field">
                 <label htmlFor="sup-phone">Téléphone</label>
                 <input id="sup-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
@@ -299,6 +351,17 @@ export function SuppliersPage() {
               <div className="field">
                 <label htmlFor="sup-address">Adresse</label>
                 <input id="sup-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              </div>
+              <div className="field">
+                <label htmlFor="sup-terms">Conditions de paiement (jours, 0 = comptant)</label>
+                <input
+                  id="sup-terms"
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={form.payment_terms_days}
+                  onChange={(e) => setForm({ ...form, payment_terms_days: e.target.value })}
+                />
               </div>
             </div>
             <div className="form-actions" style={{ marginTop: 16 }}>
@@ -328,6 +391,14 @@ export function SuppliersPage() {
                 />
               </div>
               <div className="field">
+                <label htmlFor="esup-tax-id">NINEA / identifiant fiscal</label>
+                <input
+                  id="esup-tax-id"
+                  value={editForm.tax_id}
+                  onChange={(e) => setEditForm({ ...editForm, tax_id: e.target.value })}
+                />
+              </div>
+              <div className="field">
                 <label htmlFor="esup-phone">Téléphone</label>
                 <input
                   id="esup-phone"
@@ -350,6 +421,17 @@ export function SuppliersPage() {
                   id="esup-address"
                   value={editForm.address}
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="esup-terms">Conditions de paiement (jours, 0 = comptant)</label>
+                <input
+                  id="esup-terms"
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={editForm.payment_terms_days}
+                  onChange={(e) => setEditForm({ ...editForm, payment_terms_days: e.target.value })}
                 />
               </div>
             </div>

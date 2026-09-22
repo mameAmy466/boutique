@@ -69,6 +69,7 @@ export function SalesPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [customerName, setCustomerName] = useState('');
   const [discount, setDiscount] = useState('0');
+  const [taxExempt, setTaxExempt] = useState(false);
   const [lines, setLines] = useState<Line[]>([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
   const [openingAmount, setOpeningAmount] = useState('0');
   const [registerId, setRegisterId] = useState('');
@@ -303,6 +304,7 @@ export function SalesPage() {
         payment_method: paymentMethod,
         customer_name: customerName || undefined,
         discount: isAdmin ? Number(discount || 0) : undefined,
+        tax_rate: taxExempt ? 0 : 18,
         items: lines
           .filter((l) => l.product_batch_id)
           .map((l) => ({
@@ -326,6 +328,7 @@ export function SalesPage() {
     setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
     setCustomerName('');
     setDiscount('0');
+    setTaxExempt(false);
   }
 
   function closeSaleModal() {
@@ -334,6 +337,7 @@ export function SalesPage() {
     setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
     setCustomerName('');
     setDiscount('0');
+    setTaxExempt(false);
   }
 
   return (
@@ -605,6 +609,18 @@ export function SalesPage() {
                     <p className="hint">Remise maximale autorisée : {formatMoney(maxDiscount)} (la vente ne peut jamais passer sous son coût total).</p>
                   </div>
                 )}
+                <div className="field">
+                  <label htmlFor="sale-tax-exempt" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      id="sale-tax-exempt"
+                      type="checkbox"
+                      checked={taxExempt}
+                      onChange={(e) => setTaxExempt(e.target.checked)}
+                    />
+                    Exonéré de TVA
+                  </label>
+                  <p className="hint">Par défaut, la TVA (18%) est extraite du total TTC affiché sur la facture.</p>
+                </div>
               </div>
 
               <div className="section-title" style={{ marginTop: 0 }}>Articles</div>

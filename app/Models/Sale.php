@@ -33,10 +33,13 @@ class Sale extends Model
         'total',
         'payment_method',
         'status',
+        'tax_rate',
         'cancellation_reason',
         'cancelled_by',
         'cancelled_at',
     ];
+
+    protected $appends = ['tax_amount', 'subtotal_ht'];
 
     protected function casts(): array
     {
@@ -44,8 +47,31 @@ class Sale extends Model
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
+            'tax_rate' => 'decimal:2',
             'cancelled_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The total is (and stays) TTC — VAT is extracted from it rather than
+     * added on top, so cash reconciliation, accounting and stock keep
+     * working exactly as before this column existed.
+     */
+    public function getTaxAmountAttribute(): float
+    {
+        $rate = (float) $this->tax_rate;
+        if ($rate <= 0) {
+            return 0.0;
+        }
+
+        $total = (float) $this->total;
+
+        return round($total - $total / (1 + $rate / 100), 2);
+    }
+
+    public function getSubtotalHtAttribute(): float
+    {
+        return round((float) $this->total - $this->tax_amount, 2);
     }
 
     /**

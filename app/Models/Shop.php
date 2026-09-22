@@ -23,6 +23,7 @@ class Shop extends Model
         'sales_target',
         'low_stock_alert_threshold',
         'status',
+        'closed_until',
     ];
 
     protected function casts(): array
@@ -30,7 +31,18 @@ class Shop extends Model
         return [
             'monthly_budget' => 'decimal:2',
             'sales_target' => 'decimal:2',
+            'closed_until' => 'date',
         ];
+    }
+
+    /**
+     * Whether a given date falls in a period this shop has already closed —
+     * used to block backdated entries, edits and deletions once a période
+     * comptable has been locked.
+     */
+    public function isDateLocked(string $date): bool
+    {
+        return $this->closed_until !== null && $date <= $this->closed_until->toDateString();
     }
 
     public function users(): HasMany

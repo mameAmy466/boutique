@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\DebtInUseException;
 use App\Http\Controllers\Controller;
 use App\Models\ClientDebt;
+use App\Models\Customer;
 use App\Models\Sale;
 use App\Services\AccountingEntryService;
 use Illuminate\Http\Request;
@@ -53,7 +54,21 @@ class ClientDebtController extends Controller
             abort(403, 'Vous ne pouvez enregistrer une créance que pour votre propre boutique.');
         }
 
+        $customer = Customer::findOrFail($data['customer_id']);
+        if ($customer->credit_limit !== null) {
+            $currentDebt = $customer->totalDebt();
+            if ($currentDebt + (float) $data['amount'] > (float) $customer->credit_limit) {
+                abort(422, sprintf(
+                    'Plafond de crédit dépassé : %s doit déjà %s FCFA sur un plafond de %s FCFA.',
+                    $customer->name,
+                    number_format($currentDebt, 0, ',', ' '),
+                    number_format((float) $customer->credit_limit, 0, ',', ' '),
+                ));
+            }
+        }
+
         $debt = ClientDebt::create([...$data, 'created_by' => $actor->id]);
+        $debt->update(['invoice_number' => sprintf('FAC-CR-%d-%06d', now()->year, $debt->id)]);
 
         $this->accounting->recordClientDebtCreated($debt);
 
@@ -103,6 +118,10 @@ class ClientDebtController extends Controller
                 'Montant trop élevé : il reste %.2f à recevoir sur cette créance.',
                 $clientDebt->remaining,
             ));
+        }
+
+        if ($clientDebt->shop->isDateLocked($data['paid_at'])) {
+            abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $clientDebt->shop->closed_until->toDateString()));
         }
 
         $payment = $clientDebt->payments()->create([

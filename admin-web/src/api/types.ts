@@ -20,6 +20,7 @@ export interface Shop {
   sales_target: string | null;
   low_stock_alert_threshold: number;
   status: 'active' | 'suspended' | 'closed' | 'archived';
+  closed_until: string | null;
 }
 
 export interface User {
@@ -43,9 +44,17 @@ export interface Category {
 export interface Supplier {
   id: number;
   name: string;
+  tax_id: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
+  payment_terms_days: number | null;
+}
+
+export interface SupplierFiche extends Supplier {
+  debts: SupplierDebt[];
+  total_debt: number;
+  consolidated: boolean;
 }
 
 export interface Product {
@@ -211,6 +220,9 @@ export interface Sale {
   subtotal: string;
   discount: string;
   total: string;
+  tax_rate: string;
+  tax_amount: number;
+  subtotal_ht: number;
   payment_method: PaymentMethod;
   status: 'completed' | 'cancelled' | 'returned' | 'partially_returned';
   created_at: string;
@@ -301,8 +313,18 @@ export interface Customer {
   id: number;
   shop_id: number;
   name: string;
+  tax_id: string | null;
   phone: string | null;
+  address: string | null;
+  payment_terms_days: number | null;
+  credit_limit: string | null;
   note: string | null;
+}
+
+export interface CustomerFiche extends Customer {
+  debts: ClientDebt[];
+  total_debt: number;
+  credit_available: number | null;
 }
 
 export type DebtStatus = 'pending' | 'partial' | 'paid';
@@ -334,6 +356,7 @@ export interface ClientDebt {
   id: number;
   shop_id: number;
   customer_id: number;
+  invoice_number: string | null;
   amount: string;
   due_date: string | null;
   note: string | null;
@@ -393,6 +416,33 @@ export interface AccountingRule {
   journal?: AccountingJournal | null;
 }
 
+export interface AccountingRuleCoverageRow {
+  event: AccountingEvent;
+  category: ExpenseCategory | null;
+  configured: boolean;
+}
+
+export interface AccountingRuleCoverage {
+  total: number;
+  configured_count: number;
+  rows: AccountingRuleCoverageRow[];
+}
+
+export interface UnbalancedEntry {
+  id: number;
+  reference: string | null;
+  label: string;
+  entry_date: string;
+  diff: number;
+}
+
+export interface IntegrityCheck {
+  total_debit: number;
+  total_credit: number;
+  balanced: boolean;
+  unbalanced_entries: UnbalancedEntry[];
+}
+
 export interface JournalEntryLine {
   id: number;
   journal_entry_id: number;
@@ -417,4 +467,117 @@ export interface JournalEntry {
   shop?: Shop;
   lines?: JournalEntryLine[];
   created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export type PurchaseOrderStatus = 'ordered' | 'partially_received' | 'received' | 'cancelled';
+
+export interface PurchaseOrderItem {
+  id: number;
+  purchase_order_id: number;
+  product_id: number;
+  quantity_ordered: number;
+  unit_cost: string;
+  quantity_received: number;
+  remaining_quantity: number;
+  product?: Product;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  shop_id: number;
+  supplier_id: number;
+  reference: string;
+  status: PurchaseOrderStatus;
+  expected_date: string | null;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  supplier?: Supplier;
+  shop?: Shop;
+  items?: PurchaseOrderItem[];
+  created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export interface UnmatchedJournalEntryLine extends JournalEntryLine {
+  journal_entry?: JournalEntry;
+}
+
+export interface BankStatementLine {
+  id: number;
+  shop_id: number;
+  account_id: number;
+  statement_date: string;
+  label: string;
+  amount: string;
+  reconciled: boolean;
+  journal_entry_line_id: number | null;
+  account?: Account;
+  journal_entry_line?: UnmatchedJournalEntryLine;
+  imported_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export interface AccountLedgerMovement {
+  entry_id: number;
+  entry_date: string;
+  reference: string | null;
+  label: string;
+  journal_code: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface AccountLedger {
+  account: Account;
+  from: string | null;
+  to: string | null;
+  opening_balance: number;
+  movements: AccountLedgerMovement[];
+  closing_balance: number;
+}
+
+export interface TrialBalanceRow {
+  account: Pick<Account, 'id' | 'code' | 'name' | 'type'>;
+  opening_balance: number;
+  debit: number;
+  credit: number;
+  closing_balance: number;
+}
+
+export interface TrialBalanceTotals {
+  opening_balance: number;
+  debit: number;
+  credit: number;
+  closing_balance: number;
+}
+
+export interface TrialBalance {
+  from: string | null;
+  to: string | null;
+  rows: TrialBalanceRow[];
+  totals: TrialBalanceTotals;
+}
+
+export interface FinancialStatementLine {
+  account: { id: number; code: string; name: string };
+  amount: number;
+}
+
+export interface IncomeStatement {
+  from: string | null;
+  to: string | null;
+  charges: FinancialStatementLine[];
+  produits: FinancialStatementLine[];
+  total_charges: number;
+  total_produits: number;
+  net_result: number;
+}
+
+export interface BalanceSheet {
+  to: string | null;
+  actif: FinancialStatementLine[];
+  passif: FinancialStatementLine[];
+  net_result: number;
+  total_actif: number;
+  total_passif: number;
 }

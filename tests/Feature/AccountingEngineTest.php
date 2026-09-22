@@ -262,6 +262,10 @@ class AccountingEngineTest extends TestCase
             'code' => '9999', 'name' => 'Test', 'type' => 'charge',
         ])->assertForbidden();
 
+        // A shop admin may still read the chart of accounts (e.g. to pick one
+        // on their own grand livre), just not create/update/delete it.
+        $this->actingAs($shopAdmin, 'sanctum')->getJson('/api/accounts')->assertOk();
+
         $this->actingAs($superAdmin, 'sanctum')->postJson('/api/accounts', [
             'code' => '9999', 'name' => 'Test', 'type' => 'charge',
         ])->assertCreated();

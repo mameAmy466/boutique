@@ -14,6 +14,7 @@ class ClientDebt extends Model
     protected $fillable = [
         'shop_id',
         'customer_id',
+        'invoice_number',
         'amount',
         'due_date',
         'note',

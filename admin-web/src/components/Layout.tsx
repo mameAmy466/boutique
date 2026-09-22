@@ -13,12 +13,15 @@ import {
   IconCashDrawer,
   IconClipboard,
   IconClose,
+  IconCoin,
   IconGrid,
   IconReceipt,
   IconRegister,
+  IconSend,
   IconSettings,
   IconShop,
   IconTag,
+  IconTrend,
   IconTruck,
   IconUsers,
 } from './DashboardIcons';
@@ -87,10 +90,16 @@ export function ProtectedLayout() {
     { to: '/supplier-debts', label: 'Dettes fournisseurs', icon: <IconTruck /> },
     { to: '/client-debts', label: 'Créances clients', icon: <IconBag /> },
     { to: '/journal-entries', label: 'Écritures', icon: <IconAudit /> },
+    { to: '/grand-livre', label: 'Grand livre', icon: <IconCoin /> },
+    { to: '/balance-comptable', label: 'Balance comptable', icon: <IconTrend /> },
+    { to: '/compte-de-resultat', label: 'Compte de résultat', icon: <IconTrend /> },
+    { to: '/bilan', label: 'Bilan', icon: <IconClipboard /> },
+    { to: '/rapprochement-bancaire', label: 'Rapprochement bancaire', icon: <IconBank /> },
     ...(isSuperAdmin
       ? [
           { to: '/chart-of-accounts', label: 'Plan comptable', icon: <IconClipboard /> },
           { to: '/accounting-rules', label: 'Règles comptables', icon: <IconSettings /> },
+          { to: '/controle-comptable', label: 'Contrôle comptable', icon: <IconAudit /> },
         ]
       : []),
   ];
@@ -134,6 +143,15 @@ export function ProtectedLayout() {
           icon={<IconTruck />}
           items={[{ to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> }]}
         />
+
+        {isAdmin && (
+          <NavGroup
+            id="purchasing"
+            label="Achats"
+            icon={<IconSend />}
+            items={[{ to: '/purchase-orders', label: 'Bons de commande', icon: <IconSend /> }]}
+          />
+        )}
 
         {isAdmin && <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />}
 

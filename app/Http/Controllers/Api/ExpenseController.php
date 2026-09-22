@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\Sale;
+use App\Models\Shop;
 use App\Services\AccountingEntryService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -62,6 +63,11 @@ class ExpenseController extends Controller
             abort(403, 'Vous ne pouvez enregistrer une dépense que pour votre propre boutique.');
         }
 
+        $shop = Shop::findOrFail($data['shop_id']);
+        if ($shop->isDateLocked($data['expense_date'])) {
+            abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $shop->closed_until->toDateString()));
+        }
+
         $expense = Expense::create([...$data, 'payment_method' => $data['payment_method'] ?? 'cash', 'created_by' => $actor->id]);
 
         $this->accounting->recordExpense($expense);
@@ -82,6 +88,12 @@ class ExpenseController extends Controller
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $shop = $expense->shop;
+        $newDate = $data['expense_date'] ?? $expense->expense_date->toDateString();
+        if ($shop->isDateLocked($expense->expense_date->toDateString()) || $shop->isDateLocked($newDate)) {
+            abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $shop->closed_until->toDateString()));
+        }
+
         $expense->update($data);
 
         return response()->json($expense->load('createdByUser'));
@@ -90,6 +102,10 @@ class ExpenseController extends Controller
     public function destroy(Expense $expense)
     {
         $this->authorize('delete', $expense);
+
+        if ($expense->shop->isDateLocked($expense->expense_date->toDateString())) {
+            abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $expense->shop->closed_until->toDateString()));
+        }
 
         $expense->delete();
 

@@ -18,9 +18,16 @@ import { ClientDebtsPage } from './pages/ClientDebtsPage';
 import { ChartOfAccountsPage } from './pages/ChartOfAccountsPage';
 import { AccountingRulesPage } from './pages/AccountingRulesPage';
 import { JournalEntriesPage } from './pages/JournalEntriesPage';
+import { GrandLivrePage } from './pages/GrandLivrePage';
+import { BalanceComptablePage } from './pages/BalanceComptablePage';
 import { AuditPage } from './pages/AuditPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AccountPage } from './pages/AccountPage';
+import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { IncomeStatementPage } from './pages/IncomeStatementPage';
+import { BalanceSheetPage } from './pages/BalanceSheetPage';
+import { BankReconciliationPage } from './pages/BankReconciliationPage';
+import { AccountingHealthPage } from './pages/AccountingHealthPage';
 
 export default function App() {
   return (
@@ -45,9 +52,16 @@ export default function App() {
             <Route path="/chart-of-accounts" element={<ChartOfAccountsPage />} />
             <Route path="/accounting-rules" element={<AccountingRulesPage />} />
             <Route path="/journal-entries" element={<JournalEntriesPage />} />
+            <Route path="/grand-livre" element={<GrandLivrePage />} />
+            <Route path="/balance-comptable" element={<BalanceComptablePage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+            <Route path="/compte-de-resultat" element={<IncomeStatementPage />} />
+            <Route path="/bilan" element={<BalanceSheetPage />} />
+            <Route path="/rapprochement-bancaire" element={<BankReconciliationPage />} />
+            <Route path="/controle-comptable" element={<AccountingHealthPage />} />
           </Route>
         </Routes>
       </AuthProvider>
