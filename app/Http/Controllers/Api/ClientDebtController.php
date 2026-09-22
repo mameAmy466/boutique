@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\DebtInUseException;
 use App\Http\Controllers\Controller;
 use App\Models\ClientDebt;
+use App\Models\Customer;
 use App\Models\Sale;
 use App\Services\AccountingEntryService;
 use Illuminate\Http\Request;
@@ -51,6 +52,19 @@ class ClientDebtController extends Controller
 
         if (! $actor->isSuperAdmin() && (int) $data['shop_id'] !== $actor->shop_id) {
             abort(403, 'Vous ne pouvez enregistrer une créance que pour votre propre boutique.');
+        }
+
+        $customer = Customer::findOrFail($data['customer_id']);
+        if ($customer->credit_limit !== null) {
+            $currentDebt = $customer->totalDebt();
+            if ($currentDebt + (float) $data['amount'] > (float) $customer->credit_limit) {
+                abort(422, sprintf(
+                    'Plafond de crédit dépassé : %s doit déjà %s FCFA sur un plafond de %s FCFA.',
+                    $customer->name,
+                    number_format($currentDebt, 0, ',', ' '),
+                    number_format((float) $customer->credit_limit, 0, ',', ' '),
+                ));
+            }
         }
 
         $debt = ClientDebt::create([...$data, 'created_by' => $actor->id]);

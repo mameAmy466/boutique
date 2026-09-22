@@ -27,17 +27,33 @@ class SupplierController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'tax_id' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email'],
             'address' => ['nullable', 'string', 'max:255'],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         ]);
 
         return response()->json(Supplier::create($data), 201);
     }
 
-    public function show(Supplier $supplier)
+    public function show(Request $request, Supplier $supplier)
     {
-        return response()->json($supplier);
+        $actor = $request->user();
+        $shopScope = $actor->isSuperAdmin() ? null : $actor->shop_id;
+
+        $debtsQuery = $supplier->debts()->with('createdByUser')->withSum('payments', 'amount');
+        if ($shopScope) {
+            $debtsQuery->where('shop_id', $shopScope);
+        }
+        $debts = $debtsQuery->latest()->get();
+
+        return response()->json([
+            ...$supplier->toArray(),
+            'debts' => $debts,
+            'total_debt' => round((float) $debts->sum('remaining'), 2),
+            'consolidated' => $shopScope === null,
+        ]);
     }
 
     public function update(Request $request, Supplier $supplier)
@@ -46,9 +62,11 @@ class SupplierController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
+            'tax_id' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email'],
             'address' => ['nullable', 'string', 'max:255'],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         ]);
 
         $supplier->update($data);

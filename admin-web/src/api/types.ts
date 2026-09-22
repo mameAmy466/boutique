@@ -43,9 +43,17 @@ export interface Category {
 export interface Supplier {
   id: number;
   name: string;
+  tax_id: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
+  payment_terms_days: number | null;
+}
+
+export interface SupplierFiche extends Supplier {
+  debts: SupplierDebt[];
+  total_debt: number;
+  consolidated: boolean;
 }
 
 export interface Product {
@@ -301,8 +309,18 @@ export interface Customer {
   id: number;
   shop_id: number;
   name: string;
+  tax_id: string | null;
   phone: string | null;
+  address: string | null;
+  payment_terms_days: number | null;
+  credit_limit: string | null;
   note: string | null;
+}
+
+export interface CustomerFiche extends Customer {
+  debts: ClientDebt[];
+  total_debt: number;
+  credit_available: number | null;
 }
 
 export type DebtStatus = 'pending' | 'partial' | 'paid';

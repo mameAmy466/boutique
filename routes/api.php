@@ -66,7 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
 
-    Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update']);
+    Route::apiResource('customers', CustomerController::class)->only(['index', 'show', 'store', 'update']);
 
     Route::apiResource('supplier-debts', SupplierDebtController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('/supplier-debts/{supplierDebt}/payments', [SupplierDebtController::class, 'addPayment']);

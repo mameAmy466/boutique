@@ -42,7 +42,11 @@ class CustomerController extends Controller
         $data = $request->validate([
             'shop_id' => ['required', 'exists:shops,id'],
             'name' => ['required', 'string', 'max:255'],
+            'tax_id' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -51,6 +55,26 @@ class CustomerController extends Controller
         }
 
         return response()->json(Customer::create($data), 201);
+    }
+
+    public function show(Request $request, Customer $customer)
+    {
+        $actor = $request->user();
+
+        if (! $actor->isSuperAdmin() && $actor->shop_id !== $customer->shop_id) {
+            abort(403, "Vous n'avez pas accès à ce client.");
+        }
+
+        $debts = $customer->debts()->with('createdByUser')->withSum('payments', 'amount')->latest()->get();
+        $totalDebt = round((float) $debts->sum('remaining'), 2);
+        $creditLimit = $customer->credit_limit !== null ? (float) $customer->credit_limit : null;
+
+        return response()->json([
+            ...$customer->toArray(),
+            'debts' => $debts,
+            'total_debt' => $totalDebt,
+            'credit_available' => $creditLimit !== null ? round($creditLimit - $totalDebt, 2) : null,
+        ]);
     }
 
     public function update(Request $request, Customer $customer)
@@ -63,7 +87,11 @@ class CustomerController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
+            'tax_id' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
