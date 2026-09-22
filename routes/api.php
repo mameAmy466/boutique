@@ -86,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/accounting/ledger/{account}', [AccountingController::class, 'ledger']);
     Route::get('/accounting/income-statement', [AccountingController::class, 'incomeStatement']);
     Route::get('/accounting/balance-sheet', [AccountingController::class, 'balanceSheet']);
+    Route::get('/accounting/integrity-check', [AccountingController::class, 'integrityCheck']);
 
     Route::get('/bank-statement-lines/unmatched-entries', [BankStatementLineController::class, 'unmatchedEntries']);
     Route::post('/bank-statement-lines/import', [BankStatementLineController::class, 'import']);
@@ -95,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::apiResource('accounting-journals', AccountingJournalController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/accounting-rules/coverage', [AccountingRuleController::class, 'coverage']);
     Route::apiResource('accounting-rules', AccountingRuleController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/journal-entries', [JournalEntryController::class, 'index']);
 });

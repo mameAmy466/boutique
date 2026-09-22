@@ -69,6 +69,7 @@ export function ProtectedLayout() {
       ? [
           { to: '/chart-of-accounts', label: 'Plan comptable', icon: <IconClipboard /> },
           { to: '/accounting-rules', label: 'Règles comptables', icon: <IconSettings /> },
+          { to: '/controle-comptable', label: 'Contrôle comptable', icon: <IconAudit /> },
         ]
       : []),
   ];

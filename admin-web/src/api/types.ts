@@ -416,6 +416,33 @@ export interface AccountingRule {
   journal?: AccountingJournal | null;
 }
 
+export interface AccountingRuleCoverageRow {
+  event: AccountingEvent;
+  category: ExpenseCategory | null;
+  configured: boolean;
+}
+
+export interface AccountingRuleCoverage {
+  total: number;
+  configured_count: number;
+  rows: AccountingRuleCoverageRow[];
+}
+
+export interface UnbalancedEntry {
+  id: number;
+  reference: string | null;
+  label: string;
+  entry_date: string;
+  diff: number;
+}
+
+export interface IntegrityCheck {
+  total_debit: number;
+  total_credit: number;
+  balanced: boolean;
+  unbalanced_entries: UnbalancedEntry[];
+}
+
 export interface JournalEntryLine {
   id: number;
   journal_entry_id: number;

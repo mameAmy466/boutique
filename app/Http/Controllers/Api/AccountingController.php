@@ -362,6 +362,56 @@ class AccountingController extends Controller
     }
 
     /**
+     * Périodic integrity control: total debit must equal total credit across
+     * every journal entry line, and each individual entry must balance on
+     * its own — catches any bug or manual tampering the "always balanced by
+     * construction" design should otherwise guarantee.
+     */
+    public function integrityCheck(Request $request)
+    {
+        $this->authorize('viewAny', JournalEntry::class);
+
+        $actor = $request->user();
+        $shopId = $actor->isSuperAdmin()
+            ? ($request->filled('shop_id') ? $request->integer('shop_id') : null)
+            : $actor->shop_id;
+
+        $baseQuery = function () use ($shopId) {
+            return JournalEntryLine::query()
+                ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+                ->when($shopId, fn ($q) => $q->where('journal_entries.shop_id', $shopId));
+        };
+
+        $totals = $baseQuery()
+            ->selectRaw('COALESCE(SUM(journal_entry_lines.debit), 0) as debit, COALESCE(SUM(journal_entry_lines.credit), 0) as credit')
+            ->first();
+
+        $unbalancedIds = $baseQuery()
+            ->groupBy('journal_entry_lines.journal_entry_id')
+            ->havingRaw('ABS(COALESCE(SUM(journal_entry_lines.debit), 0) - COALESCE(SUM(journal_entry_lines.credit), 0)) > 0.005')
+            ->pluck('journal_entry_lines.journal_entry_id');
+
+        $unbalancedEntries = JournalEntry::query()
+            ->whereIn('id', $unbalancedIds)
+            ->with('lines')
+            ->get()
+            ->map(fn (JournalEntry $entry) => [
+                'id' => $entry->id,
+                'reference' => $entry->reference,
+                'label' => $entry->label,
+                'entry_date' => $entry->entry_date->toDateString(),
+                'diff' => round((float) $entry->lines->sum('debit') - (float) $entry->lines->sum('credit'), 2),
+            ]);
+
+        return response()->json([
+            'total_debit' => round((float) $totals->debit, 2),
+            'total_credit' => round((float) $totals->credit, 2),
+            'balanced' => abs((float) $totals->debit - (float) $totals->credit) < 0.01,
+            'unbalanced_entries' => $unbalancedEntries->values(),
+        ]);
+    }
+
+    /**
      * The period key is always a real ISO date (the bucket's start day), so
      * ordering is a plain string sort and the frontend — already fluent in
      * fr-FR date formatting (see lib/format.ts) — derives the display label
