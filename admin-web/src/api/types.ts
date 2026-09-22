@@ -20,6 +20,7 @@ export interface Shop {
   sales_target: string | null;
   low_stock_alert_threshold: number;
   status: 'active' | 'suspended' | 'closed' | 'archived';
+  closed_until: string | null;
 }
 
 export interface User {
@@ -468,6 +469,24 @@ export interface PurchaseOrder {
   shop?: Shop;
   items?: PurchaseOrderItem[];
   created_by_user?: Pick<User, 'id' | 'name'> | null;
+}
+
+export interface UnmatchedJournalEntryLine extends JournalEntryLine {
+  journal_entry?: JournalEntry;
+}
+
+export interface BankStatementLine {
+  id: number;
+  shop_id: number;
+  account_id: number;
+  statement_date: string;
+  label: string;
+  amount: string;
+  reconciled: boolean;
+  journal_entry_line_id: number | null;
+  account?: Account;
+  journal_entry_line?: UnmatchedJournalEntryLine;
+  imported_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 
 export interface AccountLedgerMovement {

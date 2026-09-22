@@ -26,6 +26,7 @@ import { AccountPage } from './pages/AccountPage';
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
 import { IncomeStatementPage } from './pages/IncomeStatementPage';
 import { BalanceSheetPage } from './pages/BalanceSheetPage';
+import { BankReconciliationPage } from './pages/BankReconciliationPage';
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
             <Route path="/compte-de-resultat" element={<IncomeStatementPage />} />
             <Route path="/bilan" element={<BalanceSheetPage />} />
+            <Route path="/rapprochement-bancaire" element={<BankReconciliationPage />} />
           </Route>
         </Routes>
       </AuthProvider>

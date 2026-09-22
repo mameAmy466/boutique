@@ -64,6 +64,7 @@ export function ProtectedLayout() {
     { to: '/balance-comptable', label: 'Balance comptable', icon: <IconTrend /> },
     { to: '/compte-de-resultat', label: 'Compte de résultat', icon: <IconTrend /> },
     { to: '/bilan', label: 'Bilan', icon: <IconClipboard /> },
+    { to: '/rapprochement-bancaire', label: 'Rapprochement bancaire', icon: <IconBank /> },
     ...(isSuperAdmin
       ? [
           { to: '/chart-of-accounts', label: 'Plan comptable', icon: <IconClipboard /> },

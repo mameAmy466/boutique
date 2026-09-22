@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AccountingController;
 use App\Http\Controllers\Api\AccountingJournalController;
 use App\Http\Controllers\Api\AccountingRuleController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BankStatementLineController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\CategoryController;
@@ -35,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/roles', [RoleController::class, 'index']);
 
     Route::apiResource('shops', ShopController::class);
+    Route::post('/shops/{shop}/close-period', [ShopController::class, 'closePeriod']);
     Route::get('/users/{user}/activity', [UserController::class, 'activity']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('categories', CategoryController::class);
@@ -84,6 +86,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/accounting/ledger/{account}', [AccountingController::class, 'ledger']);
     Route::get('/accounting/income-statement', [AccountingController::class, 'incomeStatement']);
     Route::get('/accounting/balance-sheet', [AccountingController::class, 'balanceSheet']);
+
+    Route::get('/bank-statement-lines/unmatched-entries', [BankStatementLineController::class, 'unmatchedEntries']);
+    Route::post('/bank-statement-lines/import', [BankStatementLineController::class, 'import']);
+    Route::post('/bank-statement-lines/{bankStatementLine}/match', [BankStatementLineController::class, 'match']);
+    Route::post('/bank-statement-lines/{bankStatementLine}/unmatch', [BankStatementLineController::class, 'unmatch']);
+    Route::apiResource('bank-statement-lines', BankStatementLineController::class)->only(['index', 'store', 'destroy']);
 
     Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::apiResource('accounting-journals', AccountingJournalController::class)->only(['index', 'store', 'update', 'destroy']);

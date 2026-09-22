@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Drawer } from '../components/Drawer';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { formatMoney, initials } from '../lib/format';
+import { formatDate, formatMoney, initials } from '../lib/format';
 import { SalesTrendChart } from '../components/charts/SalesTrendChart';
 import { TopProductsChart } from '../components/charts/TopProductsChart';
 
@@ -53,6 +53,11 @@ export function ShopsPage() {
   const [figuresLoading, setFiguresLoading] = useState(false);
 
   const canCreate = user?.role?.slug === 'super_admin';
+  const isSuperAdmin = user?.role?.slug === 'super_admin';
+
+  const [closeDate, setCloseDate] = useState('');
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [closeSubmitting, setCloseSubmitting] = useState(false);
 
   function load() {
     setLoading(true);
@@ -64,6 +69,22 @@ export function ShopsPage() {
   }
 
   useEffect(load, []);
+
+  async function handleClosePeriod(shop: Shop) {
+    setCloseError(null);
+    if (!closeDate) return;
+    if (!window.confirm(`Clôturer la période jusqu'au ${closeDate} pour ${shop.name} ? Cette action ne peut pas être annulée.`)) return;
+    setCloseSubmitting(true);
+    try {
+      const updated = await api.post<Shop>(`/shops/${shop.id}/close-period`, { closed_until: closeDate });
+      setShops((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setCloseDate('');
+    } catch (err) {
+      setCloseError(err instanceof ApiError ? err.message : 'Erreur inattendue.');
+    } finally {
+      setCloseSubmitting(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -218,6 +239,32 @@ export function ShopsPage() {
                   <span>Budget</span>
                   <span className="num">{formatMoney(selected.monthly_budget)}</span>
                 </div>
+              </div>
+
+              <div className="catalog-aside-block">
+                <span className="label">Clôture comptable</span>
+                <div className="catalog-aside-box">
+                  {selected.closed_until
+                    ? `Clôturée jusqu'au ${formatDate(selected.closed_until)}`
+                    : 'Aucune période clôturée'}
+                </div>
+                {isSuperAdmin && (
+                  <>
+                    {closeError && <div className="alert error" style={{ marginTop: 8 }}>{closeError}</div>}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <input type="date" value={closeDate} onChange={(e) => setCloseDate(e.target.value)} />
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        disabled={!closeDate || closeSubmitting}
+                        onClick={() => handleClosePeriod(selected)}
+                      >
+                        {closeSubmitting ? 'Clôture…' : 'Clôturer'}
+                      </button>
+                    </div>
+                    <p className="hint">Verrouille toutes les écritures, dépenses et paiements à cette date ou avant.</p>
+                  </>
+                )}
               </div>
             </>
           ) : (

@@ -83,4 +83,29 @@ class ShopController extends Controller
 
         return response()->json(['message' => 'Boutique archivée.']);
     }
+
+    /**
+     * Locks every entry, expense and payment dated on or before the given
+     * date — a closure can only move forward, never reopen an already
+     * closed period.
+     */
+    public function closePeriod(Request $request, Shop $shop)
+    {
+        $this->authorize('update', $shop);
+
+        $data = $request->validate([
+            'closed_until' => ['required', 'date', 'before_or_equal:today'],
+        ]);
+
+        if ($shop->closed_until && $data['closed_until'] <= $shop->closed_until->toDateString()) {
+            abort(422, sprintf(
+                'La période est déjà clôturée jusqu\'au %s : impossible de revenir en arrière.',
+                $shop->closed_until->toDateString(),
+            ));
+        }
+
+        $shop->update(['closed_until' => $data['closed_until']]);
+
+        return response()->json($shop);
+    }
 }

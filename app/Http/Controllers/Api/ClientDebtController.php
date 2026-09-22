@@ -120,6 +120,10 @@ class ClientDebtController extends Controller
             ));
         }
 
+        if ($clientDebt->shop->isDateLocked($data['paid_at'])) {
+            abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $clientDebt->shop->closed_until->toDateString()));
+        }
+
         $payment = $clientDebt->payments()->create([
             ...$data,
             'payment_method' => $data['payment_method'] ?? 'cash',

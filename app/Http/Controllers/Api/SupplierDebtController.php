@@ -105,6 +105,10 @@ class SupplierDebtController extends Controller
             ));
         }
 
+        if ($supplierDebt->shop->isDateLocked($data['paid_at'])) {
+            abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $supplierDebt->shop->closed_until->toDateString()));
+        }
+
         $payment = $supplierDebt->payments()->create([
             ...$data,
             'payment_method' => $data['payment_method'] ?? 'cash',
