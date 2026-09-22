@@ -233,7 +233,10 @@ class AccountingEngineTest extends TestCase
 
     public function test_recording_never_throws_when_the_plan_comptable_is_not_configured(): void
     {
-        // No AccountingSeeder call: no accounts, journals or rules exist.
+        // The seed_default_accounting_chart migration seeds a default plan
+        // comptable on every migrate, so simulate "not configured" (e.g. an
+        // admin cleared the rules) by removing them after migrating.
+        \App\Models\AccountingRule::query()->delete();
         ['shop' => $shop, 'admin' => $admin, 'batch' => $batch, 'session' => $session] = $this->makeShopWithBatch();
 
         $sale = app(SaleService::class)->createSale(
