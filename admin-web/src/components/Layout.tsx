@@ -141,7 +141,10 @@ export function ProtectedLayout() {
           id="partners"
           label="Tiers"
           icon={<IconTruck />}
-          items={[{ to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> }]}
+          items={[
+            { to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> },
+            { to: '/employees', label: 'Employés', icon: <IconUsers /> },
+          ]}
         />
 
         {isAdmin && (

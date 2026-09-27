@@ -25,6 +25,7 @@ class Expense extends Model
 
     protected $fillable = [
         'shop_id',
+        'employee_id',
         'category',
         'label',
         'amount',
@@ -50,5 +51,10 @@ class Expense extends Model
     public function createdByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
     }
 }

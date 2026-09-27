@@ -299,6 +299,7 @@ export type ExpenseCategory =
 export interface Expense {
   id: number;
   shop_id: number;
+  employee_id: number | null;
   category: ExpenseCategory;
   label: string | null;
   amount: string;
@@ -308,6 +309,28 @@ export interface Expense {
   created_by: number | null;
   created_at: string;
   created_by_user?: Pick<User, 'id' | 'name'> | null;
+  employee?: Pick<Employee, 'id' | 'name'> | null;
+}
+
+export type EmployeeStatus = 'active' | 'inactive';
+
+export interface Employee {
+  id: number;
+  shop_id: number;
+  name: string;
+  position: string | null;
+  phone: string | null;
+  address: string | null;
+  hire_date: string | null;
+  base_salary: string | null;
+  status: EmployeeStatus;
+  note: string | null;
+  created_at: string;
+}
+
+export interface EmployeeFiche extends Employee {
+  salary_payments: Expense[];
+  total_paid_this_year: number;
 }
 
 export interface Customer {

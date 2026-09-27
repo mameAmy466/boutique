@@ -7,6 +7,7 @@ import { ShopsPage } from './pages/ShopsPage';
 import { UsersPage } from './pages/UsersPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { SuppliersPage } from './pages/SuppliersPage';
+import { EmployeesPage } from './pages/EmployeesPage';
 import { StocksPage } from './pages/StocksPage';
 import { SalesPage } from './pages/SalesPage';
 import { CashSessionsPage } from './pages/CashSessionsPage';
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
+            <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/stocks" element={<StocksPage />} />
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/cash-sessions" element={<CashSessionsPage />} />
