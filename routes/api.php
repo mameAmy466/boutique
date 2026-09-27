@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ClientDebtController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\JournalEntryController;
@@ -72,6 +73,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/shop/{shop}', [DashboardController::class, 'shop']);
 
     Route::apiResource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
+
+    Route::apiResource('employees', EmployeeController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 
     Route::apiResource('customers', CustomerController::class)->only(['index', 'show', 'store', 'update']);
 

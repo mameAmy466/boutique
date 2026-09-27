@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api, ApiError, firstValidationError } from '../api/client';
-import type { Expense, ExpenseCategory, Shop } from '../api/types';
+import type { Employee, Expense, ExpenseCategory, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
@@ -11,7 +11,15 @@ import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
 
 function emptyForm(shopId: string) {
-  return { shop_id: shopId, category: 'loyer' as ExpenseCategory, label: '', amount: '', expense_date: new Date().toISOString().slice(0, 10), note: '' };
+  return {
+    shop_id: shopId,
+    category: 'loyer' as ExpenseCategory,
+    employee_id: '',
+    label: '',
+    amount: '',
+    expense_date: new Date().toISOString().slice(0, 10),
+    note: '',
+  };
 }
 
 export function ExpensesPage() {
@@ -21,6 +29,7 @@ export function ExpensesPage() {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +71,16 @@ export function ExpensesPage() {
     if (isSuperAdmin) api.get<Shop[]>('/shops').then(setShops);
   }, [isSuperAdmin]);
 
+  useEffect(() => {
+    const shopId = showCreate ? form.shop_id : editExpense ? editForm.shop_id : '';
+    if (!shopId) {
+      setEmployees([]);
+      return;
+    }
+    api.get<Employee[]>(`/employees?shop_id=${shopId}&status=active`).then(setEmployees);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreate, form.shop_id, editExpense, editForm.shop_id]);
+
   const total = useMemo(() => expenses.reduce((sum, e) => sum + Number(e.amount), 0), [expenses]);
   const byCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -90,6 +109,7 @@ export function ExpensesPage() {
       await api.post('/expenses', {
         shop_id: Number(form.shop_id),
         category: form.category,
+        employee_id: form.category === 'salaires' && form.employee_id ? Number(form.employee_id) : undefined,
         label: form.label || undefined,
         amount: Number(form.amount),
         expense_date: form.expense_date,
@@ -110,6 +130,7 @@ export function ExpensesPage() {
     setEditForm({
       shop_id: String(expense.shop_id),
       category: expense.category,
+      employee_id: expense.employee_id ? String(expense.employee_id) : '',
       label: expense.label ?? '',
       amount: expense.amount,
       expense_date: expense.expense_date.slice(0, 10),
@@ -126,6 +147,7 @@ export function ExpensesPage() {
     try {
       await api.put(`/expenses/${editExpense.id}`, {
         category: editForm.category,
+        employee_id: editForm.category === 'salaires' && editForm.employee_id ? Number(editForm.employee_id) : null,
         label: editForm.label || undefined,
         amount: Number(editForm.amount),
         expense_date: editForm.expense_date,
@@ -251,7 +273,10 @@ export function ExpensesPage() {
                 <td data-label="Catégorie">
                   <span className="badge neutral">{EXPENSE_CATEGORY_LABEL[e.category]}</span>
                 </td>
-                <td data-label="Libellé">{e.label || '—'}</td>
+                <td data-label="Libellé">
+                  {e.label || '—'}
+                  {e.employee && <span className="hint" style={{ display: 'block' }}>{e.employee.name}</span>}
+                </td>
                 <td className="num" data-label="Montant">{formatMoney(e.amount)}</td>
                 <td data-label="Enregistré par">{e.created_by_user?.name ?? '—'}</td>
                 <td data-label="" className="row-actions">
@@ -305,6 +330,27 @@ export function ExpensesPage() {
                   ))}
                 </select>
               </div>
+              {form.category === 'salaires' && (
+                <div className="field">
+                  <label htmlFor="exp-employee">Employé</label>
+                  <select
+                    id="exp-employee"
+                    value={form.employee_id}
+                    onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
+                    required
+                  >
+                    <option value="">— choisir —</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} {emp.position ? `— ${emp.position}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {employees.length === 0 && (
+                    <p className="hint">Aucun employé actif dans cette boutique — enregistre-le d'abord sur la page Employés.</p>
+                  )}
+                </div>
+              )}
               <div className="field">
                 <label htmlFor="exp-amount">Montant</label>
                 <input
@@ -366,6 +412,24 @@ export function ExpensesPage() {
                   ))}
                 </select>
               </div>
+              {editForm.category === 'salaires' && (
+                <div className="field">
+                  <label htmlFor="eexp-employee">Employé</label>
+                  <select
+                    id="eexp-employee"
+                    value={editForm.employee_id}
+                    onChange={(e) => setEditForm({ ...editForm, employee_id: e.target.value })}
+                    required
+                  >
+                    <option value="">— choisir —</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} {emp.position ? `— ${emp.position}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="field">
                 <label htmlFor="eexp-amount">Montant</label>
                 <input
