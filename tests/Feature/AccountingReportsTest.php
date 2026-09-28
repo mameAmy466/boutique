@@ -21,9 +21,10 @@ class AccountingReportsTest extends TestCase
 
     private function makeShopWithBatch(string $code = 'BTA'): array
     {
-        $shop = Shop::create(['name' => "Boutique {$code}", 'code' => $code]);
+        $organization = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $organization->id, 'name' => "Boutique {$code}", 'code' => $code]);
         $role = Role::firstOrCreate(['slug' => Role::ADMIN_BOUTIQUE], ['name' => Role::ADMIN_BOUTIQUE]);
-        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id]);
+        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id, 'organization_id' => $organization->id]);
 
         $product = Product::create(['name' => 'Sac', 'reference' => "REF-{$code}", 'unit' => 'pcs', 'min_stock' => 1]);
         $batch = ProductBatch::create([

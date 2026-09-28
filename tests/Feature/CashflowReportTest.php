@@ -21,9 +21,10 @@ class CashflowReportTest extends TestCase
 
     private function makeShop(): array
     {
-        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
+        $organization = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $organization->id, 'name' => 'Boutique A', 'code' => 'BTA']);
         $role = Role::firstOrCreate(['slug' => Role::ADMIN_BOUTIQUE], ['name' => Role::ADMIN_BOUTIQUE]);
-        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id]);
+        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id, 'organization_id' => $organization->id]);
 
         $product = Product::create(['name' => 'Sac', 'reference' => 'REF-1', 'unit' => 'pcs', 'min_stock' => 1]);
         $batch = ProductBatch::create([
@@ -80,9 +81,10 @@ class CashflowReportTest extends TestCase
             paymentMethod: 'cash',
         );
 
-        $shopB = Shop::create(['name' => 'Boutique B', 'code' => 'BTB']);
+        $organizationB = $this->createOrganization();
+        $shopB = Shop::create(['organization_id' => $organizationB->id, 'name' => 'Boutique B', 'code' => 'BTB']);
         $roleB = Role::where('slug', Role::ADMIN_BOUTIQUE)->first();
-        $adminB = User::factory()->create(['role_id' => $roleB->id, 'shop_id' => $shopB->id]);
+        $adminB = User::factory()->create(['role_id' => $roleB->id, 'shop_id' => $shopB->id, 'organization_id' => $organizationB->id]);
         $this->actingAs($adminB, 'sanctum')->postJson('/api/expenses', [
             'shop_id' => $shopB->id, 'category' => 'loyer', 'amount' => 99999, 'expense_date' => now()->toDateString(),
         ])->assertCreated();

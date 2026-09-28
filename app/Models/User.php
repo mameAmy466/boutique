@@ -27,7 +27,9 @@ class User extends Authenticatable
         'password',
         'role_id',
         'shop_id',
+        'organization_id',
         'is_active',
+        'is_platform_admin',
     ];
 
     public function role(): BelongsTo
@@ -38,6 +40,21 @@ class User extends Authenticatable
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * A platform admin operates the SaaS layer itself (organizations, plans,
+     * subscriptions across every client) — distinct from Role::SUPER_ADMIN,
+     * which manages one organization's own shops.
+     */
+    public function isPlatformAdmin(): bool
+    {
+        return (bool) $this->is_platform_admin;
     }
 
     public function sales(): HasMany
@@ -101,6 +118,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_platform_admin' => 'boolean',
         ];
     }
 }

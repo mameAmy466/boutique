@@ -14,7 +14,7 @@ class UserPolicy
 
     public function view(User $user, User $target): bool
     {
-        return $user->isSuperAdmin() || $user->shop_id === $target->shop_id;
+        return $this->ownsUser($user, $target) || $user->shop_id === $target->shop_id;
     }
 
     public function create(User $user): bool
@@ -24,7 +24,7 @@ class UserPolicy
 
     public function update(User $user, User $target): bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($this->ownsUser($user, $target)) {
             return true;
         }
 
@@ -37,5 +37,14 @@ class UserPolicy
     public function delete(User $user, User $target): bool
     {
         return $this->update($user, $target);
+    }
+
+    /**
+     * A super admin only manages users within their own organization — never
+     * another client's, even by guessing an id.
+     */
+    private function ownsUser(User $user, User $target): bool
+    {
+        return $user->isSuperAdmin() && $user->organization_id === $target->organization_id;
     }
 }

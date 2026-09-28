@@ -134,9 +134,10 @@ class AccountingEngineTest extends TestCase
     public function test_an_expense_debits_its_categorys_charge_account_and_credits_treasury(): void
     {
         $this->seed(AccountingSeeder::class);
-        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
+        $organization = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $organization->id, 'name' => 'Boutique A', 'code' => 'BTA']);
         $role = Role::firstOrCreate(['slug' => Role::ADMIN_BOUTIQUE], ['name' => Role::ADMIN_BOUTIQUE]);
-        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id]);
+        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id, 'organization_id' => $organization->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/expenses', [
             'shop_id' => $shop->id, 'category' => 'electricite', 'amount' => 45000,

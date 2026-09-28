@@ -14,7 +14,7 @@ class ShopPolicy
 
     public function view(User $user, Shop $shop): bool
     {
-        return $user->isSuperAdmin() || $user->shop_id === $shop->id;
+        return $this->ownsShop($user, $shop) || $user->shop_id === $shop->id;
     }
 
     public function create(User $user): bool
@@ -24,11 +24,21 @@ class ShopPolicy
 
     public function update(User $user, Shop $shop): bool
     {
-        return $user->isSuperAdmin();
+        return $this->ownsShop($user, $shop);
     }
 
     public function delete(User $user, Shop $shop): bool
     {
-        return $user->isSuperAdmin();
+        return $this->ownsShop($user, $shop);
+    }
+
+    /**
+     * A super admin only manages the shops of their own organization — never
+     * another client's, even by guessing an id. See SubscriptionService for
+     * the quota this pairs with on shop creation.
+     */
+    private function ownsShop(User $user, Shop $shop): bool
+    {
+        return $user->isSuperAdmin() && $user->organization_id === $shop->organization_id;
     }
 }
