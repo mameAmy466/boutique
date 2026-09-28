@@ -15,11 +15,12 @@ class EmployeeManagementTest extends TestCase
 
     private function makeShopWithAdmin(): array
     {
-        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
+        $organization = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $organization->id, 'name' => 'Boutique A', 'code' => 'BTA']);
         $role = Role::firstOrCreate(['slug' => Role::ADMIN_BOUTIQUE], ['name' => Role::ADMIN_BOUTIQUE]);
-        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id]);
+        $admin = User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop->id, 'organization_id' => $organization->id]);
 
-        return compact('shop', 'admin');
+        return compact('shop', 'admin', 'organization');
     }
 
     public function test_a_shop_admin_can_register_and_update_an_employee(): void

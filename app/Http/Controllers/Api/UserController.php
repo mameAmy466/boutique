@@ -6,14 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\CashSession;
 use App\Models\ProductBatch;
 use App\Models\Sale;
+use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly SubscriptionService $subscriptions) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', User::class);
@@ -21,7 +25,7 @@ class UserController extends Controller
         $actor = $request->user();
 
         $users = $actor->isSuperAdmin()
-            ? User::query()->with(['role', 'shop'])->get()
+            ? User::query()->with(['role', 'shop'])->where('organization_id', $actor->organization_id)->get()
             : User::query()->with(['role', 'shop'])->where('shop_id', $actor->shop_id)->get();
 
         return response()->json($users);
@@ -44,7 +48,25 @@ class UserController extends Controller
         // A shop admin may only create cashiers scoped to their own shop.
         if (! $actor->isSuperAdmin()) {
             $data['shop_id'] = $actor->shop_id;
+        } elseif (! empty($data['shop_id'])) {
+            // A super admin may only assign a new user to a shop within
+            // their own organization — never another client's, by guessing
+            // its id.
+            $targetShop = Shop::find($data['shop_id']);
+            if (! $targetShop || $targetShop->organization_id !== $actor->organization_id) {
+                abort(422, "Cette boutique n'appartient pas à votre organisation.");
+            }
         }
+
+        $currentUserCount = User::where('organization_id', $actor->organization_id)->count();
+        $this->subscriptions->assertWithinLimit(
+            $actor->organization,
+            'max_users',
+            $currentUserCount,
+            'Limite d\'utilisateurs de votre abonnement atteinte. Passez à un forfait supérieur ou ajoutez un utilisateur en option.',
+        );
+
+        $data['organization_id'] = $actor->organization_id;
 
         $user = User::create($data);
 

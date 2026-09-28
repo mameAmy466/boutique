@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Shop;
 use App\Models\User;
@@ -12,16 +13,21 @@ class ExpenseManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeUser(string $roleSlug, ?Shop $shop = null): User
+    private function makeUser(string $roleSlug, ?Shop $shop = null, ?Organization $organization = null): User
     {
         $role = Role::firstOrCreate(['slug' => $roleSlug], ['name' => $roleSlug]);
 
-        return User::factory()->create(['role_id' => $role->id, 'shop_id' => $shop?->id]);
+        return User::factory()->create([
+            'role_id' => $role->id,
+            'shop_id' => $shop?->id,
+            'organization_id' => $organization?->id ?? $shop?->organization_id,
+        ]);
     }
 
     public function test_a_shop_admin_can_create_and_list_expenses_for_their_own_shop(): void
     {
-        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
+        $org = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique A', 'code' => 'BTA']);
         $admin = $this->makeUser(Role::ADMIN_BOUTIQUE, $shop);
 
         $create = $this->actingAs($admin, 'sanctum')->postJson('/api/expenses', [
@@ -41,8 +47,9 @@ class ExpenseManagementTest extends TestCase
 
     public function test_a_shop_admin_cannot_create_an_expense_for_another_shop(): void
     {
-        $shopA = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
-        $shopB = Shop::create(['name' => 'Boutique B', 'code' => 'BTB']);
+        $org = $this->createOrganization();
+        $shopA = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique A', 'code' => 'BTA']);
+        $shopB = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique B', 'code' => 'BTB']);
         $admin = $this->makeUser(Role::ADMIN_BOUTIQUE, $shopA);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/expenses', [
@@ -57,7 +64,8 @@ class ExpenseManagementTest extends TestCase
 
     public function test_a_cashier_cannot_view_or_create_expenses(): void
     {
-        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
+        $org = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique A', 'code' => 'BTA']);
         $cashier = $this->makeUser(Role::CAISSIER, $shop);
 
         $this->actingAs($cashier, 'sanctum')->getJson('/api/expenses')->assertForbidden();
@@ -72,7 +80,8 @@ class ExpenseManagementTest extends TestCase
 
     public function test_an_invalid_category_is_rejected(): void
     {
-        $shop = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
+        $org = $this->createOrganization();
+        $shop = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique A', 'code' => 'BTA']);
         $admin = $this->makeUser(Role::ADMIN_BOUTIQUE, $shop);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/expenses', [
@@ -87,9 +96,10 @@ class ExpenseManagementTest extends TestCase
 
     public function test_a_super_admin_sees_expenses_across_shops_and_can_filter_by_shop(): void
     {
-        $shopA = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
-        $shopB = Shop::create(['name' => 'Boutique B', 'code' => 'BTB']);
-        $superAdmin = $this->makeUser(Role::SUPER_ADMIN);
+        $org = $this->createOrganization();
+        $shopA = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique A', 'code' => 'BTA']);
+        $shopB = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique B', 'code' => 'BTB']);
+        $superAdmin = $this->makeUser(Role::SUPER_ADMIN, null, $org);
         $adminA = $this->makeUser(Role::ADMIN_BOUTIQUE, $shopA);
         $adminB = $this->makeUser(Role::ADMIN_BOUTIQUE, $shopB);
 
@@ -109,8 +119,9 @@ class ExpenseManagementTest extends TestCase
 
     public function test_a_shop_admin_can_update_and_delete_their_own_shops_expense_but_not_another_shops(): void
     {
-        $shopA = Shop::create(['name' => 'Boutique A', 'code' => 'BTA']);
-        $shopB = Shop::create(['name' => 'Boutique B', 'code' => 'BTB']);
+        $org = $this->createOrganization();
+        $shopA = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique A', 'code' => 'BTA']);
+        $shopB = Shop::create(['organization_id' => $org->id, 'name' => 'Boutique B', 'code' => 'BTB']);
         $adminA = $this->makeUser(Role::ADMIN_BOUTIQUE, $shopA);
         $adminB = $this->makeUser(Role::ADMIN_BOUTIQUE, $shopB);
 

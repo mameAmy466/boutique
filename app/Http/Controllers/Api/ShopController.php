@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
 {
+    public function __construct(private readonly SubscriptionService $subscriptions) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Shop::class);
@@ -15,7 +18,7 @@ class ShopController extends Controller
         $user = $request->user();
 
         $shops = $user->isSuperAdmin()
-            ? Shop::query()->get()
+            ? Shop::query()->where('organization_id', $user->organization_id)->get()
             : Shop::query()->where('id', $user->shop_id)->get();
 
         return response()->json($shops);
@@ -24,6 +27,8 @@ class ShopController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', Shop::class);
+
+        $actor = $request->user();
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -40,7 +45,15 @@ class ShopController extends Controller
             'status' => ['nullable', 'in:active,suspended,closed,archived'],
         ]);
 
-        $shop = Shop::create($data);
+        $currentShopCount = Shop::where('organization_id', $actor->organization_id)->count();
+        $this->subscriptions->assertWithinLimit(
+            $actor->organization,
+            'max_shops',
+            $currentShopCount,
+            'Limite de boutiques de votre abonnement atteinte. Passez à un forfait supérieur ou ajoutez une boutique en option.',
+        );
+
+        $shop = Shop::create([...$data, 'organization_id' => $actor->organization_id]);
 
         return response()->json($shop, 201);
     }

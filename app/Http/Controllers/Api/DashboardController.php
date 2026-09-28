@@ -9,34 +9,47 @@ use App\Models\ProductBatch;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly SubscriptionService $subscriptions) {}
+
     public function general(Request $request)
     {
         $this->authorize('viewAny', Shop::class);
 
-        if (! $request->user()->isSuperAdmin()) {
+        $actor = $request->user();
+        if (! $actor->isSuperAdmin()) {
             abort(403, 'Réservé à l\'administrateur général.');
         }
 
+        $shopIds = Shop::where('organization_id', $actor->organization_id)->pluck('id');
+
         return response()->json([
-            'revenue' => $this->revenueFigures(),
-            'gross_profit' => $this->grossProfit(),
+            'revenue' => $this->revenueFigures(null, $shopIds),
+            'gross_profit' => $this->grossProfit(null, $shopIds),
             'shops' => [
-                'total' => Shop::count(),
-                'active' => Shop::where('status', 'active')->count(),
+                'total' => $shopIds->count(),
+                'active' => Shop::whereIn('id', $shopIds)->where('status', 'active')->count(),
             ],
-            'stock' => $this->stockFigures(),
+            'stock' => $this->stockFigures(null, $shopIds),
             'cash_sessions' => [
-                'open' => CashSession::where('status', 'open')->count(),
+                'open' => CashSession::whereHas('cashRegister', fn ($q) => $q->whereIn('shop_id', $shopIds))
+                    ->where('status', 'open')->count(),
             ],
-            'alerts' => $this->alertCounts(),
-            'sales_trend' => $this->salesTrend(),
-            'top_products' => $this->topProducts(),
-            'shops_comparison' => $this->shopsComparison(),
+            'alerts' => $this->alertCounts(null, $shopIds),
+            'sales_trend' => $this->salesTrend(null, $shopIds),
+            'top_products' => $this->topProducts(null, $shopIds),
+            // Comparing shops against each other is the one piece of this
+            // dashboard the pricing grid reserves for Pro Max — Simple/Pro
+            // organizations still get every other figure above, scoped to
+            // their own (single) shop.
+            'shops_comparison' => $this->subscriptions->hasFeature($actor->organization, 'multi_shop_dashboard')
+                ? $this->shopsComparison($shopIds)
+                : [],
         ]);
     }
 
@@ -59,11 +72,19 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function revenueFigures(?int $shopId = null): array
+    /**
+     * Every private figure below takes either a single $shopId (the
+     * per-shop dashboard) or a $shopIds collection (the organization-wide
+     * dashboard) — never both, and never neither once organizations exist,
+     * so a query with no filter at all can no longer silently span every
+     * organization in the database.
+     */
+    private function revenueFigures(?int $shopId = null, $shopIds = null): array
     {
         $query = fn ($from) => Sale::query()
             ->where('status', Sale::STATUS_COMPLETED)
             ->when($shopId, fn ($q) => $q->where('shop_id', $shopId))
+            ->when(! $shopId && $shopIds !== null, fn ($q) => $q->whereIn('shop_id', $shopIds))
             ->where('created_at', '>=', $from)
             ->sum('total');
 
@@ -75,20 +96,22 @@ class DashboardController extends Controller
         ];
     }
 
-    private function grossProfit(?int $shopId = null): float
+    private function grossProfit(?int $shopId = null, $shopIds = null): float
     {
         return (float) SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sales.status', Sale::STATUS_COMPLETED)
             ->when($shopId, fn ($q) => $q->where('sales.shop_id', $shopId))
+            ->when(! $shopId && $shopIds !== null, fn ($q) => $q->whereIn('sales.shop_id', $shopIds))
             ->select(DB::raw('COALESCE(SUM(sale_items.line_total - (sale_items.cost_price * sale_items.quantity)), 0) as profit'))
             ->value('profit');
     }
 
-    private function stockFigures(?int $shopId = null): array
+    private function stockFigures(?int $shopId = null, $shopIds = null): array
     {
         $batches = ProductBatch::query()
-            ->when($shopId, fn ($q) => $q->where('shop_id', $shopId));
+            ->when($shopId, fn ($q) => $q->where('shop_id', $shopId))
+            ->when(! $shopId && $shopIds !== null, fn ($q) => $q->whereIn('shop_id', $shopIds));
 
         return [
             'value' => (float) (clone $batches)->select(
@@ -98,16 +121,20 @@ class DashboardController extends Controller
         ];
     }
 
-    private function alertCounts(?int $shopId = null): array
+    private function alertCounts(?int $shopId = null, $shopIds = null): array
     {
+        $scope = function ($q) use ($shopId, $shopIds) {
+            $q->when($shopId, fn ($qq) => $qq->where('shop_id', $shopId))
+                ->when(! $shopId && $shopIds !== null, fn ($qq) => $qq->whereIn('shop_id', $shopIds));
+        };
+
         $lowStock = Product::query()
-            ->whereHas('batches', function ($q) use ($shopId) {
-                $q->when($shopId, fn ($qq) => $qq->where('shop_id', $shopId));
-            })
+            ->whereHas('batches', $scope)
             ->get()
-            ->filter(function (Product $product) use ($shopId) {
+            ->filter(function (Product $product) use ($shopId, $shopIds) {
                 $available = $product->batches()
                     ->when($shopId, fn ($q) => $q->where('shop_id', $shopId))
+                    ->when(! $shopId && $shopIds !== null, fn ($q) => $q->whereIn('shop_id', $shopIds))
                     ->sum('quantity_available');
 
                 return $available <= $product->min_stock;
@@ -115,12 +142,10 @@ class DashboardController extends Controller
             ->count();
 
         $outOfStock = Product::query()
-            ->whereHas('batches', function ($q) use ($shopId) {
-                $q->when($shopId, fn ($qq) => $qq->where('shop_id', $shopId));
-            })
-            ->whereDoesntHave('batches', function ($q) use ($shopId) {
-                $q->when($shopId, fn ($qq) => $qq->where('shop_id', $shopId))
-                    ->where('quantity_available', '>', 0);
+            ->whereHas('batches', $scope)
+            ->whereDoesntHave('batches', function ($q) use ($scope) {
+                $scope($q);
+                $q->where('quantity_available', '>', 0);
             })
             ->count();
 
@@ -133,13 +158,14 @@ class DashboardController extends Controller
     /**
      * Daily revenue for the last 14 days (including days with no sales).
      */
-    private function salesTrend(?int $shopId = null): array
+    private function salesTrend(?int $shopId = null, $shopIds = null): array
     {
         $from = now()->subDays(13)->startOfDay();
 
         $rows = Sale::query()
             ->where('status', Sale::STATUS_COMPLETED)
             ->when($shopId, fn ($q) => $q->where('shop_id', $shopId))
+            ->when(! $shopId && $shopIds !== null, fn ($q) => $q->whereIn('shop_id', $shopIds))
             ->where('created_at', '>=', $from)
             ->select(DB::raw('DATE(created_at) as day'), DB::raw('SUM(total) as total'))
             ->groupBy('day')
@@ -160,7 +186,7 @@ class DashboardController extends Controller
     /**
      * Top 5 products by revenue (completed sales only).
      */
-    private function topProducts(?int $shopId = null): array
+    private function topProducts(?int $shopId = null, $shopIds = null): array
     {
         return SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -168,6 +194,7 @@ class DashboardController extends Controller
             ->join('products', 'products.id', '=', 'product_batches.product_id')
             ->where('sales.status', Sale::STATUS_COMPLETED)
             ->when($shopId, fn ($q) => $q->where('sales.shop_id', $shopId))
+            ->when(! $shopId && $shopIds !== null, fn ($q) => $q->whereIn('sales.shop_id', $shopIds))
             ->select(
                 'products.id as product_id',
                 'products.name',
@@ -188,13 +215,15 @@ class DashboardController extends Controller
     }
 
     /**
-     * This month's revenue and profit per active shop (super admin only).
+     * This month's revenue and profit per active shop, within the given
+     * organization's shops — a Pro Max feature (see general()).
      */
-    private function shopsComparison(): array
+    private function shopsComparison($shopIds): array
     {
         $from = now()->startOfMonth();
 
         $revenueByShop = Sale::query()
+            ->whereIn('shop_id', $shopIds)
             ->where('status', Sale::STATUS_COMPLETED)
             ->where('created_at', '>=', $from)
             ->groupBy('shop_id')
@@ -203,6 +232,7 @@ class DashboardController extends Controller
 
         $profitByShop = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->whereIn('sales.shop_id', $shopIds)
             ->where('sales.status', Sale::STATUS_COMPLETED)
             ->where('sales.created_at', '>=', $from)
             ->groupBy('sales.shop_id')
@@ -210,6 +240,7 @@ class DashboardController extends Controller
             ->pluck('profit', 'shop_id');
 
         return Shop::query()
+            ->whereIn('id', $shopIds)
             ->where('status', 'active')
             ->get(['id', 'name'])
             ->map(fn ($shop) => [

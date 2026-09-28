@@ -8,12 +8,16 @@ use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\Shop;
 use App\Services\AccountingEntryService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
-    public function __construct(private readonly AccountingEntryService $accounting) {}
+    public function __construct(
+        private readonly AccountingEntryService $accounting,
+        private readonly SubscriptionService $subscriptions,
+    ) {}
 
     public function index(Request $request)
     {
@@ -68,6 +72,13 @@ class ExpenseController extends Controller
         $this->assertEmployeeLinkIsValid($data);
 
         $shop = Shop::findOrFail($data['shop_id']);
+
+        $this->subscriptions->assertHasFeature(
+            $shop->organization,
+            'budget_enabled',
+            'La gestion des dépenses nécessite le forfait Pro ou supérieur.',
+        );
+
         if ($shop->isDateLocked($data['expense_date'])) {
             abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $shop->closed_until->toDateString()));
         }
