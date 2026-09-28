@@ -37,7 +37,7 @@ class SubscriptionEngineTest extends TestCase
         $this->assertSame('2', $simple->features()->where('feature_key', 'max_users')->value('feature_value'));
         $this->assertSame('false', $simple->features()->where('feature_key', 'budget_enabled')->value('feature_value'));
 
-        $this->assertSame('5', $proMax->features()->where('feature_key', 'max_shops')->value('feature_value'));
+        $this->assertSame('10', $proMax->features()->where('feature_key', 'max_shops')->value('feature_value'));
         $this->assertSame('unlimited', $proMax->features()->where('feature_key', 'max_products')->value('feature_value'));
         $this->assertSame('true', $proMax->features()->where('feature_key', 'multi_shop_dashboard')->value('feature_value'));
     }
@@ -71,22 +71,22 @@ class SubscriptionEngineTest extends TestCase
         $this->assertDatabaseCount('shops', 1);
     }
 
-    public function test_a_pro_max_organization_can_create_up_to_five_shops(): void
+    public function test_a_pro_max_organization_can_create_up_to_ten_shops(): void
     {
         $organization = $this->makeOrgOnPlan(Plan::CODE_PRO_MAX);
         $admin = $this->makeSuperAdmin($organization);
 
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 10; $i++) {
             $this->actingAs($admin, 'sanctum')->postJson('/api/shops', [
                 'name' => "Boutique {$i}", 'code' => "BT{$i}",
             ])->assertCreated();
         }
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/shops', [
-            'name' => 'Boutique 6', 'code' => 'BT6',
+            'name' => 'Boutique 11', 'code' => 'BT11',
         ])->assertStatus(422);
 
-        $this->assertDatabaseCount('shops', 5);
+        $this->assertDatabaseCount('shops', 10);
     }
 
     public function test_a_new_shop_is_always_attached_to_its_creators_own_organization(): void
