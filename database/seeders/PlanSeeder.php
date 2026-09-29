@@ -18,8 +18,8 @@ class PlanSeeder extends Seeder
         [
             'code' => Plan::CODE_SIMPLE,
             'name' => 'Simple',
-            'monthly_price' => 10000,
-            'annual_price' => 100000,
+            'monthly_price' => 5000,
+            'annual_price' => 50000,
             'features' => [
                 'max_shops' => '1',
                 'max_users' => '2',
@@ -36,10 +36,10 @@ class PlanSeeder extends Seeder
         [
             'code' => Plan::CODE_PRO,
             'name' => 'Pro',
-            'monthly_price' => 25000,
-            'annual_price' => 250000,
+            'monthly_price' => 15000,
+            'annual_price' => 150000,
             'features' => [
-                'max_shops' => '1',
+                'max_shops' => '5',
                 'max_users' => '10',
                 'max_registers' => '3',
                 'max_products' => '5000',
@@ -54,10 +54,10 @@ class PlanSeeder extends Seeder
         [
             'code' => Plan::CODE_PRO_MAX,
             'name' => 'Pro Max',
-            'monthly_price' => 50000,
-            'annual_price' => 500000,
+            'monthly_price' => 30000,
+            'annual_price' => 300000,
             'features' => [
-                'max_shops' => '5',
+                'max_shops' => '10',
                 'max_users' => '30',
                 'max_registers' => '10',
                 'max_products' => 'unlimited',
