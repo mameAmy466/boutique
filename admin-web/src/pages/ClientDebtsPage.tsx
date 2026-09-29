@@ -5,6 +5,7 @@ import type { ClientDebt, Customer, CustomerFiche, ProductBatch, Shop } from '..
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField } from '../components/DatePicker';
 import { IconBag } from '../components/DashboardIcons';
 import { formatDate, formatMoney } from '../lib/format';
 
@@ -451,7 +452,7 @@ export function ClientDebtsPage() {
               </div>
               <div className="field">
                 <label htmlFor="cd-due">Échéance (optionnel)</label>
-                <input id="cd-due" type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+                <DateField id="cd-due" value={form.due_date} onChange={(value) => setForm({ ...form, due_date: value })} />
               </div>
               <div className="field">
                 <label htmlFor="cd-note">Note (optionnel)</label>
@@ -539,8 +540,7 @@ export function ClientDebtsPage() {
                 />
               </div>
             )}
-
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={closeCreateModal}>
                 Annuler
               </button>
@@ -630,7 +630,7 @@ export function ClientDebtsPage() {
                 />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setShowNewCustomer(false)}>
                 Annuler
               </button>
@@ -695,7 +695,7 @@ export function ClientDebtsPage() {
                   ))}
                 </div>
               </div>
-              <div className="form-actions" style={{ marginTop: 16 }}>
+              <div className="form-actions" style={{ marginTop: 8 }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setFicheCustomer(null)}>
                   Fermer
                 </button>
@@ -768,7 +768,7 @@ export function ClientDebtsPage() {
                 />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setEditingCustomer(null)}>
                 Annuler
               </button>
@@ -802,14 +802,14 @@ export function ClientDebtsPage() {
               </div>
               <div className="field">
                 <label htmlFor="pay-date">Date</label>
-                <input id="pay-date" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} required />
+                <DateField id="pay-date" value={payDate} onChange={setPayDate} required />
               </div>
               <div className="field">
                 <label htmlFor="pay-note">Note (optionnel)</label>
                 <input id="pay-note" value={payNote} onChange={(e) => setPayNote(e.target.value)} />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setPayingDebt(null)}>
                 Annuler
               </button>

@@ -121,44 +121,47 @@ export function ProtectedLayout() {
           </button>
         </div>
 
-        <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-          <IconGrid /> Tableau de bord
-        </NavLink>
+        <nav className="sidebar-nav">
+          <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <IconGrid />
+            <span>Tableau de bord</span>
+          </NavLink>
 
-        <NavGroup
-          id="sales"
-          label="Ventes & Caisses"
-          icon={<IconRegister />}
-          items={[
-            { to: '/sales', label: 'Ventes', icon: <IconRegister /> },
-            { to: '/cash-sessions', label: 'Caisses', icon: <IconCashDrawer /> },
-          ]}
-        />
-
-        <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />
-
-        <NavGroup
-          id="partners"
-          label="Tiers"
-          icon={<IconTruck />}
-          items={[
-            { to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> },
-            { to: '/employees', label: 'Employés', icon: <IconUsers /> },
-          ]}
-        />
-
-        {isAdmin && (
           <NavGroup
-            id="purchasing"
-            label="Achats"
-            icon={<IconSend />}
-            items={[{ to: '/purchase-orders', label: 'Bons de commande', icon: <IconSend /> }]}
+            id="sales"
+            label="Ventes & Caisses"
+            icon={<IconRegister />}
+            items={[
+              { to: '/sales', label: 'Ventes', icon: <IconRegister /> },
+              { to: '/cash-sessions', label: 'Caisses', icon: <IconCashDrawer /> },
+            ]}
           />
-        )}
 
-        {isAdmin && <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />}
+          <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />
 
-        <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
+          <NavGroup
+            id="partners"
+            label="Tiers"
+            icon={<IconTruck />}
+            items={[
+              { to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> },
+              { to: '/employees', label: 'Employés', icon: <IconUsers /> },
+            ]}
+          />
+
+          {isAdmin && (
+            <NavGroup
+              id="purchasing"
+              label="Achats"
+              icon={<IconSend />}
+              items={[{ to: '/purchase-orders', label: 'Bons de commande', icon: <IconSend /> }]}
+            />
+          )}
+
+          {isAdmin && <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />}
+
+          <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
+        </nav>
 
         <div className="dash-sidebar-promo">
           <p>Gérez votre stock en temps réel</p>
