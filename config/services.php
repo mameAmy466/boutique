@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'google' => [
+        // OAuth 2.0 Client ID from Google Cloud Console (Credentials →
+        // OAuth client ID → Web application). Public value, also used
+        // as-is by the frontend's Sign In With Google button.
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
 ];

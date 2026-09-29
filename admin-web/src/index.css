@@ -2218,6 +2218,29 @@ tbody tr.row-selected {
   font-weight: 600;
 }
 
+.google-signin-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 18px;
+  color: color-mix(in srgb, #fff 65%, transparent);
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, #fff 30%, transparent);
+}
+
 .pricing-shell {
   min-height: 100vh;
   background: var(--bg);

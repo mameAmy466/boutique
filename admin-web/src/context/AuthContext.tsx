@@ -5,18 +5,26 @@ import type { User } from '../api/types';
 export interface RegisterPayload {
   organization_name: string;
   name: string;
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
+  id_token?: string;
   phone?: string;
   shop_name: string;
   shop_code: string;
   plan_code: string;
 }
 
+export interface GoogleLoginResult {
+  needsRegistration: boolean;
+  email?: string;
+  name?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<GoogleLoginResult>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -46,6 +54,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user);
   }
 
+  async function loginWithGoogle(idToken: string): Promise<GoogleLoginResult> {
+    const result = await api.post<
+      { token: string; user: User } | { needs_registration: true; email: string; name: string | null }
+    >('/auth/google', { id_token: idToken });
+
+    if ('needs_registration' in result) {
+      return { needsRegistration: true, email: result.email, name: result.name ?? undefined };
+    }
+
+    setToken(result.token);
+    setUser(result.user);
+    return { needsRegistration: false };
+  }
+
   async function register(payload: RegisterPayload) {
     const result = await api.post<{ token: string; user: User }>('/register', payload);
     setToken(result.token);
@@ -62,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser: setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, register, logout, updateUser: setUser }}>
       {children}
     </AuthContext.Provider>
   );

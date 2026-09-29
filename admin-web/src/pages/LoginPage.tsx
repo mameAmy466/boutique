@@ -3,9 +3,10 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { Logo } from '../components/Logo';
+import { GoogleSignInButton, GOOGLE_SIGN_IN_AVAILABLE } from '../components/GoogleSignInButton';
 
 export function LoginPage() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +28,22 @@ export function LoginPage() {
       setError(err instanceof ApiError ? err.message : 'Connexion impossible.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleGoogleCredential(idToken: string) {
+    setError(null);
+    try {
+      const result = await loginWithGoogle(idToken);
+      if (result.needsRegistration) {
+        navigate('/inscription?plan=pro', {
+          state: { googleIdToken: idToken, googleEmail: result.email, googleName: result.name },
+        });
+        return;
+      }
+      navigate('/');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Connexion Google impossible.');
     }
   }
 
@@ -57,6 +74,17 @@ export function LoginPage() {
           <h2>Connexion</h2>
 
           {error && <div className="alert error">{error}</div>}
+
+          {GOOGLE_SIGN_IN_AVAILABLE && (
+            <>
+              <div className="google-signin-row">
+                <GoogleSignInButton text="signin_with" onCredential={handleGoogleCredential} />
+              </div>
+              <div className="auth-divider">
+                <span>ou</span>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="field">

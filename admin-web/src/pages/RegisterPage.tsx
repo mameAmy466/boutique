@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError, firstValidationError } from '../api/client';
 import type { PublicPlan } from '../api/types';
 import { Logo } from '../components/Logo';
+import { GoogleSignInButton, GOOGLE_SIGN_IN_AVAILABLE } from '../components/GoogleSignInButton';
 import { formatMoney } from '../lib/format';
 
 const PLAN_LABEL: Record<string, string> = { simple: 'Simple', pro: 'Pro', pro_max: 'Pro Max' };
@@ -17,9 +18,15 @@ function slugifyCode(value: string): string {
     .slice(0, 10);
 }
 
+interface GoogleAuth {
+  idToken: string;
+  email: string;
+}
+
 export function RegisterPage() {
-  const { user, loading, register } = useAuth();
+  const { user, loading, register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const requestedPlan = searchParams.get('plan') ?? 'pro';
 
@@ -34,6 +41,7 @@ export function RegisterPage() {
     shop_code: '',
     plan_code: requestedPlan,
   });
+  const [googleAuth, setGoogleAuth] = useState<GoogleAuth | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,8 +49,31 @@ export function RegisterPage() {
     api.get<PublicPlan[]>('/plans').then(setPlans);
   }, []);
 
+  useEffect(() => {
+    const state = location.state as { googleIdToken?: string; googleEmail?: string; googleName?: string } | null;
+    if (state?.googleIdToken && state.googleEmail) {
+      setGoogleAuth({ idToken: state.googleIdToken, email: state.googleEmail });
+      setForm((f) => ({ ...f, name: state.googleName ?? f.name, email: state.googleEmail ?? f.email }));
+    }
+  }, [location.state]);
+
   if (!loading && user) {
     return <Navigate to="/" replace />;
+  }
+
+  async function handleGoogleCredential(idToken: string) {
+    setError(null);
+    try {
+      const result = await loginWithGoogle(idToken);
+      if (!result.needsRegistration) {
+        navigate('/');
+        return;
+      }
+      setGoogleAuth({ idToken, email: result.email ?? '' });
+      setForm((f) => ({ ...f, name: result.name ?? f.name, email: result.email ?? f.email }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Connexion Google impossible.');
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -50,7 +81,11 @@ export function RegisterPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await register(form);
+      await register(
+        googleAuth
+          ? { ...form, id_token: googleAuth.idToken, email: undefined, password: undefined }
+          : form,
+      );
       navigate('/');
     } catch (err) {
       setError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Inscription impossible.');
@@ -93,6 +128,26 @@ export function RegisterPage() {
           <h2>Inscription</h2>
 
           {error && <div className="alert error">{error}</div>}
+
+          {googleAuth ? (
+            <div className="alert success" style={{ marginBottom: 16 }}>
+              Inscription liée au compte Google <strong>{googleAuth.email}</strong>.{' '}
+              <button type="button" className="link-button" onClick={() => setGoogleAuth(null)}>
+                Utiliser une autre méthode
+              </button>
+            </div>
+          ) : (
+            GOOGLE_SIGN_IN_AVAILABLE && (
+              <>
+                <div className="google-signin-row">
+                  <GoogleSignInButton text="signup_with" onCredential={handleGoogleCredential} />
+                </div>
+                <div className="auth-divider">
+                  <span>ou</span>
+                </div>
+              </>
+            )
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="field">
@@ -143,33 +198,37 @@ export function RegisterPage() {
               <label htmlFor="name">Ton nom complet</label>
               <input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
-            <div className="field">
-              <label htmlFor="email">Adresse e-mail</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-              />
-            </div>
+            {!googleAuth && (
+              <div className="field">
+                <label htmlFor="email">Adresse e-mail</label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="username"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+              </div>
+            )}
             <div className="field">
               <label htmlFor="phone">Téléphone (optionnel)</label>
               <input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
-            <div className="field">
-              <label htmlFor="password">Mot de passe</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                required
-              />
-            </div>
+            {!googleAuth && (
+              <div className="field">
+                <label htmlFor="password">Mot de passe</label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required
+                />
+              </div>
+            )}
             <button className="login-submit" type="submit" disabled={submitting}>
               {submitting ? 'Création du compte…' : "Démarrer l'essai gratuit"}
             </button>
