@@ -29,10 +29,21 @@ export interface User {
   email: string;
   role_id: number;
   shop_id: number | null;
+  organization_id?: number | null;
   is_active: boolean;
   role: Role | null;
   shop: Shop | null;
   created_at?: string;
+}
+
+export type PlanCode = 'simple' | 'pro' | 'pro_max';
+
+export interface PublicPlan {
+  code: PlanCode;
+  name: string;
+  monthly_price: number;
+  annual_price: number;
+  features: Record<string, string>;
 }
 
 export interface Category {
