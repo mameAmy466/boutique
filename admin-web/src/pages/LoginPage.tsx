@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
 import { Logo } from '../components/Logo';
@@ -87,6 +87,10 @@ export function LoginPage() {
               {submitting ? 'Connexion…' : 'Se connecter'}
             </button>
           </form>
+
+          <p className="pricing-footnote">
+            Pas encore de compte ? <Link to="/tarifs">Voir les offres</Link>
+          </p>
         </div>
       </div>
     </div>

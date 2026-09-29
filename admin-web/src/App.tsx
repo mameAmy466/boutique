@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedLayout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
+import { PricingPage } from './pages/PricingPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ShopsPage } from './pages/ShopsPage';
 import { UsersPage } from './pages/UsersPage';
@@ -36,6 +38,8 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/tarifs" element={<PricingPage />} />
+          <Route path="/inscription" element={<RegisterPage />} />
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/shops" element={<ShopsPage />} />
