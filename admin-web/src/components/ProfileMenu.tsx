@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { initials } from '../lib/format';
-import { IconChevronDown, IconMoon, IconSettings, IconSun } from './DashboardIcons';
+import { ThemePicker } from './ThemePicker';
+import { IconChevronDown, IconSettings } from './DashboardIcons';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Administrateur général',
@@ -13,7 +13,6 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function ProfileMenu({ compact = false }: { compact?: boolean }) {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -59,10 +58,8 @@ export function ProfileMenu({ compact = false }: { compact?: boolean }) {
               <span>{user.email}</span>
             </div>
           </div>
-          <button type="button" className="dropdown-item" onClick={toggleTheme}>
-            {theme === 'dark' ? <IconSun /> : <IconMoon />}
-            {theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
-          </button>
+          <div className="dropdown-sep" />
+          <ThemePicker compact />
           <Link to="/account" className="dropdown-item" onClick={() => setOpen(false)}>
             <IconSettings />
             Mon compte

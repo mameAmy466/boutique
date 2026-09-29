@@ -57,7 +57,7 @@ function ProgressRing({ pct }: { pct: number }) {
         cy="48"
         r={radius}
         fill="none"
-        stroke="#9fe1c8"
+        stroke="var(--accent-bright)"
         strokeWidth="8"
         strokeLinecap="round"
         strokeDasharray={circumference}

@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { Account, BankStatementLine, Shop, UnmatchedJournalEntryLine } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField } from '../components/DatePicker';
 import { IconBank } from '../components/DashboardIcons';
 import { formatDate, formatMoney } from '../lib/format';
 
@@ -225,7 +226,7 @@ export function BankReconciliationPage() {
             <form onSubmit={handleManualAdd} className="field">
               <label>Ajouter une ligne manuellement</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} required />
+                <DateField value={manualDate} onChange={setManualDate} required />
                 <input placeholder="Libellé" value={manualLabel} onChange={(e) => setManualLabel(e.target.value)} required />
                 <input
                   type="number"

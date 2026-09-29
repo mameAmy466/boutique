@@ -4,6 +4,7 @@ import { api, ApiError, firstValidationError } from '../api/client';
 import type { DashboardFigures, SalesTrendPoint, User } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { ThemePicker } from '../components/ThemePicker';
 import { formatDate, formatMoney, initials } from '../lib/format';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -195,6 +196,14 @@ export function AccountPage() {
 
       <div className="account-body">
         <div className="account-col">
+          <section className="account-card">
+            <h3>Apparence</h3>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Choisis le mode clair ou sombre, puis une couleur de thème.
+            </p>
+            <ThemePicker />
+          </section>
+
           <form className="account-card" onSubmit={handleNameSubmit}>
             <h3>Informations</h3>
             {nameError && <div className="alert error">{nameError}</div>}

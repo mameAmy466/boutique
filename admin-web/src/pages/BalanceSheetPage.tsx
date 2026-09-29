@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { BalanceSheet, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField } from '../components/DatePicker';
 import { IconClipboard } from '../components/DashboardIcons';
 import { formatMoney } from '../lib/format';
 
@@ -71,7 +72,7 @@ export function BalanceSheetPage() {
             ))}
           </select>
         )}
-        <input type="date" value={toFilter} onChange={(e) => setToFilter(e.target.value)} aria-label="À la date du" />
+        <DateField value={toFilter} onChange={setToFilter} placeholder="À la date du" />
       </div>
 
       {sheet && (

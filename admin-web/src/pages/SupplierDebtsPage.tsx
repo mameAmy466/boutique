@@ -5,6 +5,7 @@ import type { Shop, Supplier, SupplierDebt } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField } from '../components/DatePicker';
 import { IconTruck } from '../components/DashboardIcons';
 import { formatDate, formatMoney } from '../lib/format';
 
@@ -279,14 +280,14 @@ export function SupplierDebtsPage() {
               </div>
               <div className="field">
                 <label htmlFor="sd-due">Échéance (optionnel)</label>
-                <input id="sd-due" type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+                <DateField id="sd-due" value={form.due_date} onChange={(value) => setForm({ ...form, due_date: value })} />
               </div>
               <div className="field">
                 <label htmlFor="sd-note">Note (optionnel)</label>
                 <input id="sd-note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
                 Annuler
               </button>
@@ -320,14 +321,14 @@ export function SupplierDebtsPage() {
               </div>
               <div className="field">
                 <label htmlFor="pay-date">Date</label>
-                <input id="pay-date" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} required />
+                <DateField id="pay-date" value={payDate} onChange={setPayDate} required />
               </div>
               <div className="field">
                 <label htmlFor="pay-note">Note (optionnel)</label>
                 <input id="pay-note" value={payNote} onChange={(e) => setPayNote(e.target.value)} />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setPayingDebt(null)}>
                 Annuler
               </button>

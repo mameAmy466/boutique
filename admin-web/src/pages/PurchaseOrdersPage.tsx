@@ -5,6 +5,7 @@ import type { Product, PurchaseOrder, Shop, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField } from '../components/DatePicker';
 import { IconSend } from '../components/DashboardIcons';
 import { formatDate, formatMoney } from '../lib/format';
 
@@ -292,7 +293,7 @@ export function PurchaseOrdersPage() {
               </div>
               <div className="field">
                 <label htmlFor="po-date">Date de livraison prévue (optionnel)</label>
-                <input id="po-date" type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
+                <DateField id="po-date" value={expectedDate} onChange={setExpectedDate} />
               </div>
               <div className="field">
                 <label htmlFor="po-note">Note (optionnel)</label>
@@ -350,7 +351,7 @@ export function PurchaseOrdersPage() {
               + Ajouter un article
             </button>
 
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
                 Annuler
               </button>
@@ -402,7 +403,7 @@ export function PurchaseOrdersPage() {
                 </div>
               </div>
             ))}
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setReceivingOrder(null)}>
                 Annuler
               </button>

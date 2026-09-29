@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { IconChevronDown } from './DashboardIcons';
 
-const STORAGE_KEY = 'boutique-nav-groups';
+const STORAGE_KEY = 'boutique-nav-groups-v2';
 
 function loadState(): Record<string, boolean> {
   try {
@@ -25,7 +25,8 @@ export function NavGroup({ id, label, icon, items }: { id: string; label: string
 
   const [expanded, setExpanded] = useState<boolean>(() => {
     const stored = loadState()[id];
-    return stored === undefined ? true : stored;
+    if (stored !== undefined) return stored;
+    return containsActive;
   });
 
   useEffect(() => {
@@ -56,9 +57,11 @@ export function NavGroup({ id, label, icon, items }: { id: string; label: string
             key={item.to}
             to={item.to}
             end={item.end}
+            title={item.label}
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >
-            {item.icon} {item.label}
+            {item.icon}
+            <span>{item.label}</span>
           </NavLink>
         ))}
       </div>

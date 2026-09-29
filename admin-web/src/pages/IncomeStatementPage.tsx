@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { IncomeStatement, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateRangeField } from '../components/DatePicker';
 import { IconTrend } from '../components/DashboardIcons';
 import { formatMoney } from '../lib/format';
 
@@ -73,8 +74,14 @@ export function IncomeStatementPage() {
             ))}
           </select>
         )}
-        <input type="date" value={fromFilter} onChange={(e) => setFromFilter(e.target.value)} aria-label="Du" />
-        <input type="date" value={toFilter} onChange={(e) => setToFilter(e.target.value)} aria-label="Au" />
+        <DateRangeField
+          from={fromFilter}
+          to={toFilter}
+          onChange={({ from, to }) => {
+            setFromFilter(from);
+            setToFilter(to);
+          }}
+        />
       </div>
 
       {statement && (

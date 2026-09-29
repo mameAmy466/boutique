@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Drawer } from '../components/Drawer';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField } from '../components/DatePicker';
 import { formatDate, formatMoney, initials } from '../lib/format';
 import { SalesTrendChart } from '../components/charts/SalesTrendChart';
 import { TopProductsChart } from '../components/charts/TopProductsChart';
@@ -252,7 +253,7 @@ export function ShopsPage() {
                   <>
                     {closeError && <div className="alert error" style={{ marginTop: 8 }}>{closeError}</div>}
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <input type="date" value={closeDate} onChange={(e) => setCloseDate(e.target.value)} />
+                      <DateField value={closeDate} onChange={setCloseDate} />
                       <button
                         type="button"
                         className="btn btn-sm"
@@ -381,7 +382,7 @@ export function ShopsPage() {
                 />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
                 Annuler
               </button>

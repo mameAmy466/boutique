@@ -5,6 +5,7 @@ import type { Employee, Expense, ExpenseCategory, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateField, DateRangeField } from '../components/DatePicker';
 import { IconReceipt } from '../components/DashboardIcons';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABEL } from '../lib/expenseCategories';
 import { exportToCsv } from '../lib/csv';
@@ -233,8 +234,14 @@ export function ExpensesPage() {
             </option>
           ))}
         </select>
-        <input type="date" value={fromFilter} onChange={(e) => setFromFilter(e.target.value)} aria-label="Du" />
-        <input type="date" value={toFilter} onChange={(e) => setToFilter(e.target.value)} aria-label="Au" />
+        <DateRangeField
+          from={fromFilter}
+          to={toFilter}
+          onChange={({ from, to }) => {
+            setFromFilter(from);
+            setToFilter(to);
+          }}
+        />
         <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={expenses.length === 0}>
           ⬇️ Exporter CSV
         </button>
@@ -364,11 +371,10 @@ export function ExpensesPage() {
               </div>
               <div className="field">
                 <label htmlFor="exp-date">Date</label>
-                <input
+                <DateField
                   id="exp-date"
-                  type="date"
                   value={form.expense_date}
-                  onChange={(e) => setForm({ ...form, expense_date: e.target.value })}
+                  onChange={(value) => setForm({ ...form, expense_date: value })}
                   required
                 />
               </div>
@@ -381,7 +387,7 @@ export function ExpensesPage() {
                 <input id="exp-note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
                 Annuler
               </button>
@@ -443,11 +449,10 @@ export function ExpensesPage() {
               </div>
               <div className="field">
                 <label htmlFor="eexp-date">Date</label>
-                <input
+                <DateField
                   id="eexp-date"
-                  type="date"
                   value={editForm.expense_date}
-                  onChange={(e) => setEditForm({ ...editForm, expense_date: e.target.value })}
+                  onChange={(value) => setEditForm({ ...editForm, expense_date: value })}
                   required
                 />
               </div>
@@ -460,7 +465,7 @@ export function ExpensesPage() {
                 <input id="eexp-note" value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} />
               </div>
             </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
+            <div className="form-actions" style={{ marginTop: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setEditExpense(null)}>
                 Annuler
               </button>

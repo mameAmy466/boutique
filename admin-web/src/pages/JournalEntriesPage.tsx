@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { Account, AccountingJournal, JournalEntry, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { DateRangeField } from '../components/DatePicker';
 import { IconAudit } from '../components/DashboardIcons';
 import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
@@ -151,8 +152,14 @@ export function JournalEntriesPage() {
             ))}
           </select>
         )}
-        <input type="date" value={fromFilter} onChange={(e) => setFromFilter(e.target.value)} aria-label="Du" />
-        <input type="date" value={toFilter} onChange={(e) => setToFilter(e.target.value)} aria-label="Au" />
+        <DateRangeField
+          from={fromFilter}
+          to={toFilter}
+          onChange={({ from, to }) => {
+            setFromFilter(from);
+            setToFilter(to);
+          }}
+        />
         <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={rows.length === 0}>
           ⬇️ Exporter CSV
         </button>

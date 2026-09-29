@@ -261,17 +261,12 @@ export function StocksPage() {
   const selectedProduct = productCards.find((card) => card.productId === selectedProductId) ?? null;
   const catalogProduct = products.find((p) => p.id === selectedProductId) ?? selectedProduct?.product ?? null;
 
-  const visibleLots = useMemo(() => {
-    if (!selectedProductId) return filtered;
-    return filtered.filter((batch) => batch.product_id === selectedProductId);
-  }, [filtered, selectedProductId]);
-
-  const lastPage = Math.max(1, Math.ceil(visibleLots.length / PAGE_SIZE));
-  const pageItems = visibleLots.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     setPage(1);
-  }, [search, shopFilter, statusFilter, selectedProductId]);
+  }, [search, shopFilter, statusFilter]);
 
   useEffect(() => {
     if (productCards.length === 0) {
@@ -390,7 +385,7 @@ export function StocksPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {!loading && visibleLots.length === 0 && (
+                  {!loading && filtered.length === 0 && (
                     <tr className="empty-row">
                       <td colSpan={isSuperAdmin ? 9 : 8}>Aucun lot ne correspond.</td>
                     </tr>
@@ -446,7 +441,7 @@ export function StocksPage() {
                 </tbody>
               </table>
             </div>
-            <Pager page={page} lastPage={lastPage} total={visibleLots.length} onChange={setPage} />
+            <Pager page={page} lastPage={lastPage} total={filtered.length} onChange={setPage} />
           </section>
         </div>
 
