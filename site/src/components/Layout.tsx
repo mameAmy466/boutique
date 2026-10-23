@@ -80,7 +80,7 @@ export function Layout() {
 
   useLayoutEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const nodes = [...document.querySelectorAll(revealSelector)].filter(
+    const nodes = [...document.querySelectorAll<HTMLElement>(revealSelector)].filter(
       (el) => !el.closest('.home-hero'),
     )
     if (reduce) {
@@ -88,7 +88,7 @@ export function Layout() {
       return
     }
 
-    const pending = new Set<Element>()
+    const pending = new Set<HTMLElement>()
     const timers: number[] = []
     nodes.forEach((el) => {
       const siblings = [...(el.parentElement?.children ?? [])]
