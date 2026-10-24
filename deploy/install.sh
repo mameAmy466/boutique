@@ -21,18 +21,14 @@ DIR=/var/www/boutique
 export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Paquets système"
+grep -rlis ondrej /etc/apt/sources.list.d/ | xargs -r rm -f
 apt-get update -y
 apt-get install -y software-properties-common curl git unzip ufw nginx mysql-server certbot python3-certbot-nginx
-# PHP fourni par Ubuntu (8.3 sur 24.04, plus récent ensuite). Le PPA ondrej ne sert
-# que sur les versions qui n'ont pas encore PHP >= 8.2, et ne supporte pas les toutes récentes.
-rm -f /etc/apt/sources.list.d/ondrej-*php*
-if ! apt-cache policy php-fpm | grep -qE 'Candidate: 2:8\.([2-9]|[1-9][0-9])'; then
-  add-apt-repository -y ppa:ondrej/php
-fi
-apt-get update -y
+# PHP fourni par Ubuntu (le PPA ondrej n'existe pas pour les versions récentes).
 apt-get install -y php-fpm php-cli php-mysql php-mbstring php-xml php-curl php-zip php-bcmath php-intl php-gd
 PHP="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
 echo "PHP $PHP"
+php -r 'exit(PHP_VERSION_ID >= 80200 ? 0 : 1);' || { echo "PHP >= 8.2 requis (trouvé $PHP)."; exit 1; }
 if ! command -v composer >/dev/null; then
   curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 fi
