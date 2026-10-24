@@ -16,7 +16,6 @@ EMAIL="${EMAIL:-admin@${DOMAIN}}"
 BRANCH="${BRANCH:-main}"
 REPO="github.com/mameAmy466/boutique.git"
 DIR=/var/www/boutique
-PHP=8.4
 
 [ "$(id -u)" = 0 ] || { echo "Lancer en root (sudo)."; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
@@ -24,10 +23,16 @@ export DEBIAN_FRONTEND=noninteractive
 echo "==> Paquets système"
 apt-get update -y
 apt-get install -y software-properties-common curl git unzip ufw nginx mysql-server certbot python3-certbot-nginx
-add-apt-repository -y ppa:ondrej/php
+# PHP fourni par Ubuntu (8.3 sur 24.04, plus récent ensuite). Le PPA ondrej ne sert
+# que sur les versions qui n'ont pas encore PHP >= 8.2, et ne supporte pas les toutes récentes.
+rm -f /etc/apt/sources.list.d/ondrej-*php*
+if ! apt-cache policy php-fpm | grep -qE 'Candidate: 2:8\.([2-9]|[1-9][0-9])'; then
+  add-apt-repository -y ppa:ondrej/php
+fi
 apt-get update -y
-apt-get install -y php$PHP-fpm php$PHP-cli php$PHP-mysql php$PHP-mbstring php$PHP-xml php$PHP-curl \
-  php$PHP-zip php$PHP-bcmath php$PHP-intl php$PHP-gd
+apt-get install -y php-fpm php-cli php-mysql php-mbstring php-xml php-curl php-zip php-bcmath php-intl php-gd
+PHP="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+echo "PHP $PHP"
 if ! command -v composer >/dev/null; then
   curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 fi

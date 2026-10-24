@@ -14,5 +14,5 @@ chown -R www-data:www-data storage bootstrap/cache
 (cd admin-web && npm ci && npm run build)
 (cd site && npm ci && npm run build)
 php artisan up
-systemctl reload php8.4-fpm nginx
+systemctl reload "php$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')-fpm" nginx
 echo "Mise à jour terminée."

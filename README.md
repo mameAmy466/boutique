@@ -11,7 +11,7 @@ caisse, factures, dashboard.
 
 ## Stack
 
-- Laravel 11, PHP 8.4
+- Laravel 11, PHP 8.2+
 - MySQL
 - Laravel Sanctum (authentification par token)
 
