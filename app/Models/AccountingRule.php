@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AccountingRule extends Model
 {
-    use HasFactory;
+    use BelongsToOrganization, HasFactory;
 
     public const EVENTS = [
         'sale',
@@ -20,6 +21,7 @@ class AccountingRule extends Model
     ];
 
     protected $fillable = [
+        'organization_id',
         'event',
         'category',
         'dynamic_leg',

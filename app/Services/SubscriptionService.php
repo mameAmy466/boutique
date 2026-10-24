@@ -32,7 +32,89 @@ class SubscriptionService
 
     public function hasAccess(Organization $organization): bool
     {
-        return (bool) $this->currentSubscriptionFor($organization)?->grantsAccess();
+        return $this->accessDenial($organization) === null;
+    }
+
+    /**
+     * Why this organization may not use the platform right now, or null when
+     * it may. An organization's own status (suspended/closed by the platform
+     * admin) wins over its subscription.
+     *
+     * @return array{code: string, message: string}|null
+     */
+    public function accessDenial(Organization $organization): ?array
+    {
+        if ($organization->status === Organization::STATUS_CLOSED) {
+            return [
+                'code' => 'organization_closed',
+                'message' => 'Ce compte a été fermé. Contactez-nous si vous souhaitez le rouvrir.',
+            ];
+        }
+
+        if ($organization->status === Organization::STATUS_SUSPENDED) {
+            return [
+                'code' => 'organization_suspended',
+                'message' => "L'accès de votre organisation est suspendu".
+                    ($organization->suspension_reason ? ' : '.$organization->suspension_reason : '').
+                    '. Régularisez votre abonnement ou contactez-nous pour le réactiver.',
+            ];
+        }
+
+        $subscription = $this->currentSubscriptionFor($organization);
+        if ($subscription) {
+            $this->refreshStatus($subscription);
+        }
+
+        if (! $subscription?->grantsAccess()) {
+            return [
+                'code' => 'subscription_expired',
+                'message' => 'Votre abonnement a expiré. Renouvelez-le pour continuer à utiliser la plateforme.',
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Moves a subscription along its lifecycle from its dates: once its trial
+     * or paid period has ended it is past_due (still usable during the grace
+     * period), then expired. Run daily by `subscriptions:check`, and on
+     * every access check so a missed run never keeps a client open.
+     */
+    public function refreshStatus(Subscription $subscription): Subscription
+    {
+        if (! in_array($subscription->status, [Subscription::STATUS_TRIAL, Subscription::STATUS_ACTIVE, Subscription::STATUS_PAST_DUE], true)) {
+            return $subscription;
+        }
+
+        $endsAt = $subscription->status === Subscription::STATUS_PAST_DUE
+            ? ($subscription->current_period_end ?? $subscription->trial_ends_at)
+            : $subscription->endsAt();
+
+        if (! $endsAt) {
+            return $subscription;
+        }
+
+        $today = now()->startOfDay();
+        $status = $subscription->status;
+
+        if ($today->gt($endsAt->copy()->addDays($subscription->grace_days ?? Subscription::DEFAULT_GRACE_DAYS))) {
+            $status = Subscription::STATUS_EXPIRED;
+        } elseif ($today->gt($endsAt)) {
+            $status = Subscription::STATUS_PAST_DUE;
+        }
+
+        if ($status !== $subscription->status) {
+            // A trial running out has no paid period: keep its end date as
+            // the reference for the grace period.
+            if ($subscription->status === Subscription::STATUS_TRIAL && ! $subscription->current_period_end) {
+                $subscription->current_period_end = $subscription->trial_ends_at;
+            }
+            $subscription->status = $status;
+            $subscription->save();
+        }
+
+        return $subscription;
     }
 
     private function featureValue(Organization $organization, string $key): ?string

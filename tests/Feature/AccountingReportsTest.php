@@ -63,7 +63,8 @@ class AccountingReportsTest extends TestCase
         );
         \Illuminate\Support\Carbon::setTestNow();
 
-        $caisse = Account::where('code', '571')->firstOrFail();
+        // Each organization has its own chart of accounts.
+        $caisse = Account::where('organization_id', $shop->organization_id)->where('code', '571')->firstOrFail();
 
         $response = $this->actingAs($admin, 'sanctum')->getJson(
             "/api/accounting/ledger/{$caisse->id}?from=2026-02-01&to=2026-02-28"
@@ -117,7 +118,7 @@ class AccountingReportsTest extends TestCase
             paymentMethod: 'cash',
         );
 
-        $caisse = Account::where('code', '571')->firstOrFail();
+        $caisse = Account::where('organization_id', $shopA->organization_id)->where('code', '571')->firstOrFail();
 
         $responseA = $this->actingAs($adminA, 'sanctum')->getJson("/api/accounting/ledger/{$caisse->id}");
         $this->assertEquals(1500.0, $responseA->json('closing_balance'));

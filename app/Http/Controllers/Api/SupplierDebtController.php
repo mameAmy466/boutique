@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Sale;
 use App\Models\SupplierDebt;
 use App\Services\AccountingEntryService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -42,8 +43,8 @@ class SupplierDebtController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
-            'supplier_id' => ['required', 'exists:suppliers,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'supplier_id' => ['required', TenantRule::exists('suppliers')],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'due_date' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:1000'],

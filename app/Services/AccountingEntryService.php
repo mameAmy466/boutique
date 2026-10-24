@@ -11,8 +11,10 @@ use App\Models\Expense;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\Sale;
+use App\Models\Shop;
 use App\Models\SupplierDebt;
 use App\Models\SupplierDebtPayment;
+use App\Support\Tenant;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -180,6 +182,27 @@ class AccountingEntryService
     }
 
     private function post(
+        string $event,
+        ?string $category,
+        EloquentModel $source,
+        int $shopId,
+        string $entryDate,
+        string $reference,
+        string $label,
+        float $amount,
+        ?string $paymentMethod,
+        ?int $createdBy,
+    ): ?JournalEntry {
+        // Read the chart of the shop's own organization, whoever triggers
+        // the posting (a request, a console command...).
+        $organizationId = Shop::withoutGlobalScopes()->whereKey($shopId)->value('organization_id');
+
+        return Tenant::as($organizationId, fn () => $this->postForTenant(
+            $event, $category, $source, $shopId, $entryDate, $reference, $label, $amount, $paymentMethod, $createdBy,
+        ));
+    }
+
+    private function postForTenant(
         string $event,
         ?string $category,
         EloquentModel $source,

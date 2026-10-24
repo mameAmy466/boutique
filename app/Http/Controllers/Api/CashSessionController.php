@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\CashSession;
 use App\Services\CashService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 
 class CashSessionController extends Controller
@@ -35,7 +36,7 @@ class CashSessionController extends Controller
         $this->authorize('open', CashSession::class);
 
         $data = $request->validate([
-            'cash_register_id' => ['required', 'exists:cash_registers,id'],
+            'cash_register_id' => ['required', TenantRule::exists('cash_registers')],
             'opening_amount' => ['required', 'numeric', 'min:0'],
         ]);
 

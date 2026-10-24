@@ -6,6 +6,8 @@ use App\Exceptions\DebtInUseException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidDiscountException;
 use App\Exceptions\PriceBelowMinimumException;
+use App\Http\Middleware\EnsureOrganizationHasAccess;
+use App\Http\Middleware\EnsurePlatformAdmin;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->api(prepend: [
             HandleCors::class,
+        ]);
+
+        $middleware->alias([
+            'organization.access' => EnsureOrganizationHasAccess::class,
+            'platform.admin' => EnsurePlatformAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

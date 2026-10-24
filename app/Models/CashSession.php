@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Tenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +12,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CashSession extends Model
 {
     use HasFactory;
+
+    /** Cash sessions belong to the tenant of their cash register's shop. */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('organization', function (Builder $query) {
+            if (($organizationId = Tenant::id()) !== null) {
+                $query->whereIn($query->qualifyColumn('cash_register_id'), fn ($registers) => $registers->select('id')->from('cash_registers')
+                    ->whereIn('shop_id', fn ($shops) => $shops->select('id')->from('shops')->where('organization_id', $organizationId)));
+            }
+        });
+    }
 
     public const STATUS_OPEN = 'open';
 

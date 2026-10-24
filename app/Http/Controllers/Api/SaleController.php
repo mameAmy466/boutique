@@ -7,6 +7,7 @@ use App\Models\CashSession;
 use App\Models\Sale;
 use App\Models\Shop;
 use App\Services\SaleService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -52,14 +53,14 @@ class SaleController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
-            'cash_session_id' => ['required', 'exists:cash_sessions,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'cash_session_id' => ['required', TenantRule::exists('cash_sessions')],
             'customer_name' => ['nullable', 'string', 'max:255'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_batch_id' => ['required', 'exists:product_batches,id'],
+            'items.*.product_batch_id' => ['required', TenantRule::exists('product_batches')],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);

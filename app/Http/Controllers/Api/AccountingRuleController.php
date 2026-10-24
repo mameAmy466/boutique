@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\AccountingRule;
 use App\Models\Expense;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -105,9 +106,9 @@ class AccountingRuleController extends Controller
             'category' => ['nullable', 'string', Rule::in(Expense::CATEGORIES)],
             'dynamic_leg' => ['nullable', Rule::in(['debit', 'credit'])],
             'dynamic_journal' => ['sometimes', 'boolean'],
-            'debit_account_id' => ['nullable', 'exists:accounts,id'],
-            'credit_account_id' => ['nullable', 'exists:accounts,id'],
-            'journal_id' => ['nullable', 'exists:accounting_journals,id'],
+            'debit_account_id' => ['nullable', TenantRule::exists('accounts')],
+            'credit_account_id' => ['nullable', TenantRule::exists('accounts')],
+            'journal_id' => ['nullable', TenantRule::exists('accounting_journals')],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 

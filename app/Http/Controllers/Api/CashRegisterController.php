@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CashRegister;
 use App\Models\Shop;
 use App\Services\SubscriptionService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 
 class CashRegisterController extends Controller
@@ -38,7 +39,7 @@ class CashRegisterController extends Controller
         }
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
             'name' => ['required', 'string', 'max:255'],
         ]);
 

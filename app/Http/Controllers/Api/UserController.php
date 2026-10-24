@@ -10,6 +10,7 @@ use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\SubscriptionService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -42,7 +43,7 @@ class UserController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'role_id' => ['required', 'exists:roles,id'],
-            'shop_id' => ['nullable', 'exists:shops,id'],
+            'shop_id' => ['nullable', TenantRule::exists('shops')],
         ]);
 
         // A shop admin may only create cashiers scoped to their own shop.
@@ -210,7 +211,7 @@ class UserController extends Controller
             'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['sometimes', 'string', 'min:8'],
             'role_id' => ['sometimes', 'exists:roles,id'],
-            'shop_id' => ['sometimes', 'nullable', 'exists:shops,id'],
+            'shop_id' => ['sometimes', 'nullable', TenantRule::exists('shops')],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 

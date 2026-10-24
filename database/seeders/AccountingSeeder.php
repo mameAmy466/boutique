@@ -6,7 +6,10 @@ use App\Models\Account;
 use App\Models\AccountingJournal;
 use App\Models\AccountingRule;
 use App\Models\Expense;
+use App\Models\Organization;
+use App\Support\Tenant;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Seeds a minimal, SYSCOHADA-inspired starting chart of accounts, journals
@@ -59,7 +62,40 @@ class AccountingSeeder extends Seeder
         'autre' => '628',
     ];
 
+    /**
+     * Every organization gets its own copy of the default chart. Before the
+     * organizations layer existed this ran once, globally — see the
+     * 2026_10_24_100000 migration for how those rows were attributed.
+     */
     public function run(): void
+    {
+        if (! Schema::hasColumn('accounts', 'organization_id')) {
+            $this->install();
+
+            return;
+        }
+
+        $organizationIds = Organization::query()->pluck('id');
+
+        // A database without organizations (the single-shop test fixtures)
+        // keeps one unowned chart.
+        if ($organizationIds->isEmpty()) {
+            $this->install();
+
+            return;
+        }
+
+        foreach ($organizationIds as $organizationId) {
+            $this->installFor($organizationId);
+        }
+    }
+
+    public function installFor(int $organizationId): void
+    {
+        Tenant::as($organizationId, fn () => $this->install());
+    }
+
+    private function install(): void
     {
         foreach (self::ACCOUNTS as [$code, $name, $type]) {
             Account::firstOrCreate(['code' => $code], ['name' => $name, 'type' => $type]);

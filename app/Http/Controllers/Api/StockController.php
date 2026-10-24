@@ -8,6 +8,7 @@ use App\Models\ProductBatch;
 use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Services\StockService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 
 class StockController extends Controller
@@ -40,9 +41,9 @@ class StockController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'product_id' => ['required', 'exists:products,id'],
-            'shop_id' => ['required', 'exists:shops,id'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'product_id' => ['required', TenantRule::exists('products')],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'supplier_id' => ['nullable', TenantRule::exists('suppliers')],
             'purchase_cost' => ['required', 'numeric', 'min:0'],
             'additional_costs' => ['nullable', 'numeric', 'min:0'],
             'min_profit_amount' => ['required', 'numeric', 'min:0'],

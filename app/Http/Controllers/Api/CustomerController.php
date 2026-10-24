@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -40,7 +41,7 @@ class CustomerController extends Controller
         }
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
             'name' => ['required', 'string', 'max:255'],
             'tax_id' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:50'],

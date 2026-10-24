@@ -3,15 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Organization;
 use App\Models\Plan;
-use App\Models\Role;
-use App\Models\Shop;
-use App\Models\Subscription;
 use App\Models\User;
+use App\Services\OrganizationProvisioner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -53,38 +49,7 @@ class AuthController extends Controller
 
         $plan = Plan::where('code', $data['plan_code'])->where('is_active', true)->firstOrFail();
 
-        $user = DB::transaction(function () use ($data, $plan) {
-            $organization = Organization::create([
-                'name' => $data['organization_name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'] ?? null,
-            ]);
-
-            $shop = Shop::create([
-                'organization_id' => $organization->id,
-                'name' => $data['shop_name'],
-                'code' => $data['shop_code'],
-            ]);
-
-            Subscription::create([
-                'organization_id' => $organization->id,
-                'plan_id' => $plan->id,
-                'status' => Subscription::STATUS_TRIAL,
-                'trial_ends_at' => now()->addDays(15)->toDateString(),
-            ]);
-
-            $superAdminRole = Role::firstOrCreate(['slug' => Role::SUPER_ADMIN], ['name' => Role::SUPER_ADMIN]);
-
-            return User::create([
-                'organization_id' => $organization->id,
-                'shop_id' => null,
-                'role_id' => $superAdminRole->id,
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => $data['password'],
-                'is_active' => true,
-            ]);
-        });
+        $user = app(OrganizationProvisioner::class)->create($data, $plan);
 
         $token = $user->createToken('api')->plainTextToken;
 

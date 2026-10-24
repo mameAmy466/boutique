@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\Shop;
 use App\Services\AccountingEntryService;
 use App\Services\SubscriptionService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -55,9 +56,9 @@ class ExpenseController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
             'category' => ['required', Rule::in(Expense::CATEGORIES)],
-            'employee_id' => ['nullable', 'exists:employees,id', Rule::requiredIf($request->input('category') === 'salaires')],
+            'employee_id' => ['nullable', TenantRule::exists('employees'), Rule::requiredIf($request->input('category') === 'salaires')],
             'label' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method' => ['nullable', Rule::in(Sale::PAYMENT_METHODS)],
@@ -96,7 +97,7 @@ class ExpenseController extends Controller
 
         $data = $request->validate([
             'category' => ['sometimes', Rule::in(Expense::CATEGORIES)],
-            'employee_id' => ['nullable', 'exists:employees,id'],
+            'employee_id' => ['nullable', TenantRule::exists('employees')],
             'label' => ['nullable', 'string', 'max:255'],
             'amount' => ['sometimes', 'numeric', 'min:0.01'],
             'payment_method' => ['sometimes', Rule::in(Sale::PAYMENT_METHODS)],

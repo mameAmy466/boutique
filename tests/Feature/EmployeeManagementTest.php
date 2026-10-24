@@ -66,10 +66,11 @@ class EmployeeManagementTest extends TestCase
         ['admin' => $admin] = $this->makeShopWithAdmin();
         $otherShop = Shop::create(['name' => 'Boutique B', 'code' => 'BTB']);
 
+        // A shop outside the admin's organization is not even a valid choice.
         $this->actingAs($admin, 'sanctum')->postJson('/api/employees', [
             'shop_id' => $otherShop->id,
             'name' => 'Awa Diop',
-        ])->assertStatus(403);
+        ])->assertStatus(422)->assertJsonValidationErrors('shop_id');
     }
 
     public function test_recording_a_salary_payment_requires_a_registered_employee(): void

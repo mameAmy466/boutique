@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountingJournal extends Model
 {
-    use HasFactory;
+    use BelongsToOrganization, HasFactory;
 
     /**
      * Well-known journal codes the accounting engine resolves treasury
@@ -19,6 +20,7 @@ class AccountingJournal extends Model
     public const BANK_CODE = 'BQ';
 
     protected $fillable = [
+        'organization_id',
         'code',
         'name',
     ];

@@ -12,6 +12,7 @@ use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Services\AccountingEntryService;
 use App\Services\ClientDebtService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -53,13 +54,13 @@ class ClientDebtController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
-            'customer_id' => ['required', 'exists:customers,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'customer_id' => ['required', TenantRule::exists('customers')],
             'amount' => ['nullable', 'numeric', 'min:0.01'],
             'due_date' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:1000'],
             'items' => ['nullable', 'array', 'min:1'],
-            'items.*.product_batch_id' => ['required_with:items', 'exists:product_batches,id'],
+            'items.*.product_batch_id' => ['required_with:items', TenantRule::exists('product_batches')],
             'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
             'items.*.unit_price' => ['required_with:items', 'numeric', 'min:0'],
         ]);

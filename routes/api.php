@@ -17,12 +17,17 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\JournalEntryController;
 use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\Platform\PlatformActivityController;
+use App\Http\Controllers\Api\Platform\PlatformDashboardController;
+use App\Http\Controllers\Api\Platform\PlatformOrganizationController;
+use App\Http\Controllers\Api\Platform\PlatformPlanController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\StockController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\SupplierDebtController;
 use App\Http\Controllers\Api\UserController;
@@ -33,10 +38,36 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::get('/plans', [PlanController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Always reachable, even for a suspended or expired client: they must be
+    // able to see why and to log out.
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'updateProfile']);
+    Route::get('/subscription', [SubscriptionController::class, 'show']);
 
+    // Platform (Super Admin) space: the operator of the SaaS only.
+    Route::middleware('platform.admin')->prefix('platform')->group(function () {
+        Route::get('/dashboard', PlatformDashboardController::class);
+        Route::get('/organizations', [PlatformOrganizationController::class, 'index']);
+        Route::post('/organizations', [PlatformOrganizationController::class, 'store']);
+        Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show']);
+        Route::put('/organizations/{organization}', [PlatformOrganizationController::class, 'update']);
+        Route::delete('/organizations/{organization}', [PlatformOrganizationController::class, 'destroy']);
+        Route::post('/organizations/{organization}/suspend', [PlatformOrganizationController::class, 'suspend']);
+        Route::post('/organizations/{organization}/reactivate', [PlatformOrganizationController::class, 'reactivate']);
+        Route::post('/organizations/{organization}/close', [PlatformOrganizationController::class, 'close']);
+        Route::put('/organizations/{organization}/subscription', [PlatformOrganizationController::class, 'updateSubscription']);
+        Route::post('/organizations/{organization}/payments', [PlatformOrganizationController::class, 'recordPayment']);
+        Route::get('/plans', [PlatformPlanController::class, 'index']);
+        Route::put('/plans/{plan}', [PlatformPlanController::class, 'update']);
+        Route::get('/payments', [PlatformActivityController::class, 'payments']);
+        Route::get('/audit-logs', [PlatformActivityController::class, 'auditLogs']);
+    });
+});
+
+// Business endpoints: refused (402) while the client is suspended, closed or
+// out of subscription.
+Route::middleware(['auth:sanctum', 'organization.access'])->group(function () {
     Route::get('/roles', [RoleController::class, 'index']);
 
     Route::apiResource('shops', ShopController::class);

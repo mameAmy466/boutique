@@ -7,8 +7,8 @@ use App\Models\PurchaseOrder;
 use App\Models\Shop;
 use App\Models\Supplier;
 use App\Services\PurchaseOrderService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class PurchaseOrderController extends Controller
@@ -43,12 +43,12 @@ class PurchaseOrderController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
-            'supplier_id' => ['required', 'exists:suppliers,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'supplier_id' => ['required', TenantRule::exists('suppliers')],
             'expected_date' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.product_id' => ['required', TenantRule::exists('products')],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
         ]);
@@ -82,7 +82,7 @@ class PurchaseOrderController extends Controller
 
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'],
-            'items.*.purchase_order_item_id' => ['required', 'exists:purchase_order_items,id'],
+            'items.*.purchase_order_item_id' => ['required', TenantRule::exists('purchase_order_items')],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.additional_costs' => ['nullable', 'numeric', 'min:0'],
             'items.*.min_profit_amount' => ['nullable', 'numeric', 'min:0'],

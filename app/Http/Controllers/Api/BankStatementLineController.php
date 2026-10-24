@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BankStatementLine;
 use App\Models\JournalEntryLine;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -46,8 +47,8 @@ class BankStatementLineController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'account_id' => ['required', 'exists:accounts,id'],
-            'shop_id' => ['nullable', 'exists:shops,id'],
+            'account_id' => ['required', TenantRule::exists('accounts')],
+            'shop_id' => ['nullable', TenantRule::exists('shops')],
         ]);
 
         $matchedIds = BankStatementLine::query()->whereNotNull('journal_entry_line_id')->pluck('journal_entry_line_id');
@@ -74,8 +75,8 @@ class BankStatementLineController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
-            'account_id' => ['required', 'exists:accounts,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'account_id' => ['required', TenantRule::exists('accounts')],
             'statement_date' => ['required', 'date'],
             'label' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric'],
@@ -102,8 +103,8 @@ class BankStatementLineController extends Controller
         $actor = $request->user();
 
         $data = $request->validate([
-            'shop_id' => ['required', 'exists:shops,id'],
-            'account_id' => ['required', 'exists:accounts,id'],
+            'shop_id' => ['required', TenantRule::exists('shops')],
+            'account_id' => ['required', TenantRule::exists('accounts')],
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ]);
 
@@ -158,7 +159,7 @@ class BankStatementLineController extends Controller
         $this->authorize('match', $bankStatementLine);
 
         $data = $request->validate([
-            'journal_entry_line_id' => ['required', 'exists:journal_entry_lines,id'],
+            'journal_entry_line_id' => ['required', TenantRule::exists('journal_entry_lines')],
         ]);
 
         $line = JournalEntryLine::query()->findOrFail($data['journal_entry_line_id']);

@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
-    use HasFactory;
+    use BelongsToOrganization, HasFactory;
 
-    protected $fillable = ['name', 'tax_id', 'phone', 'email', 'address', 'payment_terms_days'];
+    protected $fillable = ['organization_id', 'name', 'tax_id', 'phone', 'email', 'address', 'payment_terms_days'];
 
     public function products(): HasMany
     {

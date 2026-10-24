@@ -4,12 +4,17 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\SubscriptionService;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    public function __construct(private SubscriptionService $subscriptions)
+    {
+    }
+
     public function index()
     {
         return response()->json(Product::query()->with(['category', 'supplier'])->get());
@@ -21,9 +26,9 @@ class ProductController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'reference' => ['required', 'string', 'max:100', 'unique:products,reference'],
-            'category_id' => ['nullable', 'exists:categories,id'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'reference' => ['required', 'string', 'max:100', TenantRule::unique('products', 'reference')],
+            'category_id' => ['nullable', TenantRule::exists('categories')],
+            'supplier_id' => ['nullable', TenantRule::exists('suppliers')],
             'brand' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'unit' => ['nullable', 'string', 'max:50'],
@@ -32,6 +37,15 @@ class ProductController extends Controller
             'status' => ['nullable', 'in:active,inactive'],
             'image' => ['nullable', 'image', 'max:4096'],
         ]);
+
+        if ($organization = $request->user()->organization) {
+            $this->subscriptions->assertWithinLimit(
+                $organization,
+                'max_products',
+                Product::count(),
+                'Limite de produits de votre abonnement atteinte. Passez à un forfait supérieur pour en ajouter.',
+            );
+        }
 
         if ($request->hasFile('image')) {
             $data['image_path'] = $request->file('image')->store('products', 'public');
@@ -54,9 +68,9 @@ class ProductController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'reference' => ['sometimes', 'string', 'max:100', Rule::unique('products', 'reference')->ignore($product->id)],
-            'category_id' => ['nullable', 'exists:categories,id'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'reference' => ['sometimes', 'string', 'max:100', TenantRule::unique('products', 'reference')->ignore($product->id)],
+            'category_id' => ['nullable', TenantRule::exists('categories')],
+            'supplier_id' => ['nullable', TenantRule::exists('suppliers')],
             'brand' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'unit' => ['nullable', 'string', 'max:50'],

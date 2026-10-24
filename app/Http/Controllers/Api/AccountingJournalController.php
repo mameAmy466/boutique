@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountingJournal;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class AccountingJournalController extends Controller
 {
@@ -21,7 +21,7 @@ class AccountingJournalController extends Controller
         $this->authorize('create', AccountingJournal::class);
 
         $data = $request->validate([
-            'code' => ['required', 'string', 'max:10', 'unique:accounting_journals,code'],
+            'code' => ['required', 'string', 'max:10', TenantRule::unique('accounting_journals', 'code')],
             'name' => ['required', 'string', 'max:255'],
         ]);
 
@@ -33,7 +33,7 @@ class AccountingJournalController extends Controller
         $this->authorize('update', $accountingJournal);
 
         $data = $request->validate([
-            'code' => ['sometimes', 'string', 'max:10', Rule::unique('accounting_journals', 'code')->ignore($accountingJournal->id)],
+            'code' => ['sometimes', 'string', 'max:10', TenantRule::unique('accounting_journals', 'code')->ignore($accountingJournal->id)],
             'name' => ['sometimes', 'string', 'max:255'],
         ]);
 

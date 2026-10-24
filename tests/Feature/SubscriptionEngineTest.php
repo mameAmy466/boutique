@@ -112,8 +112,9 @@ class SubscriptionEngineTest extends TestCase
         $adminA = $this->makeSuperAdmin($organizationA);
         $shopB = Shop::create(['organization_id' => $organizationB->id, 'name' => 'Boutique B', 'code' => 'BTB']);
 
-        $this->actingAs($adminA, 'sanctum')->getJson("/api/shops/{$shopB->id}")->assertForbidden();
-        $this->actingAs($adminA, 'sanctum')->putJson("/api/shops/{$shopB->id}", ['name' => 'Renommée'])->assertForbidden();
+        // Another client's shop is invisible, not merely forbidden.
+        $this->actingAs($adminA, 'sanctum')->getJson("/api/shops/{$shopB->id}")->assertNotFound();
+        $this->actingAs($adminA, 'sanctum')->putJson("/api/shops/{$shopB->id}", ['name' => 'Renommée'])->assertNotFound();
     }
 
     public function test_shops_index_only_lists_the_actors_own_organization(): void

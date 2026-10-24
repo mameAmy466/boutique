@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\AccountInUseException;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -22,7 +23,7 @@ class AccountController extends Controller
         $this->authorize('create', Account::class);
 
         $data = $request->validate([
-            'code' => ['required', 'string', 'max:20', 'unique:accounts,code'],
+            'code' => ['required', 'string', 'max:20', TenantRule::unique('accounts', 'code')],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::in(Account::TYPES)],
         ]);
@@ -35,7 +36,7 @@ class AccountController extends Controller
         $this->authorize('update', $account);
 
         $data = $request->validate([
-            'code' => ['sometimes', 'string', 'max:20', Rule::unique('accounts', 'code')->ignore($account->id)],
+            'code' => ['sometimes', 'string', 'max:20', TenantRule::unique('accounts', 'code')->ignore($account->id)],
             'name' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', Rule::in(Account::TYPES)],
             'is_active' => ['sometimes', 'boolean'],
