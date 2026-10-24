@@ -31,6 +31,7 @@ export interface User {
   shop_id: number | null;
   organization_id?: number | null;
   is_active: boolean;
+  is_platform_admin?: boolean;
   role: Role | null;
   shop: Shop | null;
   created_at?: string;
@@ -626,4 +627,123 @@ export interface BalanceSheet {
   net_result: number;
   total_actif: number;
   total_passif: number;
+}
+
+export type OrganizationStatus = 'active' | 'suspended' | 'closed';
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled' | 'suspended';
+
+export interface AccessDenial {
+  code: 'organization_suspended' | 'organization_closed' | 'subscription_expired';
+  message: string;
+}
+
+export interface SubscriptionPaymentRow {
+  id: number;
+  amount: string | number;
+  method: string;
+  reference: string | null;
+  months: number;
+  paid_at: string;
+  period_start: string | null;
+  period_end: string | null;
+  note?: string | null;
+  organization?: { id: number; name: string } | null;
+  plan?: { id: number; name: string } | null;
+  recorder?: { id: number; name: string } | null;
+}
+
+export interface MySubscription {
+  organization: {
+    id: number;
+    name: string;
+    status: OrganizationStatus;
+    suspended_at: string | null;
+    suspension_reason: string | null;
+  } | null;
+  subscription: {
+    status: SubscriptionStatus;
+    plan: { code: PlanCode; name: string; monthly_price: string | number; annual_price: string | number };
+    billing_cycle: 'monthly' | 'annual' | null;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    ends_at: string | null;
+    days_left: number | null;
+    grace_days: number;
+  } | null;
+  access: AccessDenial | null;
+  is_platform_admin: boolean;
+  payments: SubscriptionPaymentRow[];
+  plans: { code: PlanCode; name: string; monthly_price: string | number; annual_price: string | number }[];
+}
+
+export interface PlatformSubscription {
+  status: SubscriptionStatus;
+  plan: { code: PlanCode; name: string; monthly_price: string | number; annual_price: string | number } | null;
+  billing_cycle: 'monthly' | 'annual' | null;
+  trial_ends_at: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  ends_at: string | null;
+  grace_days: number;
+  extra_shops: number;
+  extra_users: number;
+  extra_registers: number;
+  amount_due: number | null;
+}
+
+export interface PlatformOrganization {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: OrganizationStatus;
+  suspended_at: string | null;
+  suspension_reason: string | null;
+  created_at: string;
+  owner: { id: number; name: string; email: string } | null;
+  shops_count: number;
+  users_count: number;
+  subscription: PlatformSubscription | null;
+  last_payment: { amount: string | number; paid_at: string; method: string } | null;
+  is_platform_owner: boolean;
+}
+
+export interface PlatformAuditLogRow {
+  id: number;
+  action: string;
+  description: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
+  user: { id: number; name: string } | null;
+  organization?: { id: number; name: string } | null;
+}
+
+export interface PlatformOrganizationDetail extends PlatformOrganization {
+  shops: { id: number; name: string; code: string; status: string; phone: string | null; address: string | null }[];
+  users: { id: number; name: string; email: string; is_active: boolean; role: { slug: string; name: string } | null }[];
+  payments: SubscriptionPaymentRow[];
+  audit_logs: PlatformAuditLogRow[];
+}
+
+export interface PlatformDashboard {
+  organizations: { total: number; active: number; suspended: number; closed: number };
+  subscriptions: { trial: number; active: number; past_due: number; expired: number; expiring_soon: number };
+  revenue: { month: number; year: number };
+  by_plan: Record<string, number>;
+}
+
+export interface PlatformPlan {
+  id: number;
+  code: PlanCode;
+  name: string;
+  is_active: boolean;
+  subscriptions_count: number;
+  monthly_price: number;
+  annual_price: number;
+  features: Record<string, string>;
+}
+
+export interface FeatureDefinition {
+  label: string;
+  type: 'limit' | 'flag';
 }

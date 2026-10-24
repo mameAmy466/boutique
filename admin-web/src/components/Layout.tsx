@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api, ACCESS_DENIED_EVENT } from '../api/client';
+import type { AccessDenial, MySubscription } from '../api/types';
 import { Logo } from './Logo';
+import { AccessBlocked } from './AccessBlocked';
+import { SubscriptionNotice } from './SubscriptionNotice';
 import { TopBar } from './TopBar';
 import { NavGroup, type NavGroupItem } from './NavGroup';
 import {
@@ -31,10 +35,35 @@ export function ProtectedLayout() {
   const location = useLocation();
   const isDashboard = location.pathname === '/';
   const [menuOpen, setMenuOpen] = useState(false);
+  const [subscription, setSubscription] = useState<MySubscription | null>(null);
+  const [denial, setDenial] = useState<AccessDenial | null>(null);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  function loadSubscription() {
+    api
+      .get<MySubscription>('/subscription')
+      .then((data) => {
+        setSubscription(data);
+        setDenial(data.is_platform_admin ? null : data.access);
+      })
+      .catch(() => setSubscription(null));
+  }
+
+  useEffect(() => {
+    if (user) loadSubscription();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const onDenied = (event: Event) => {
+      const detail = (event as CustomEvent<AccessDenial | null>).detail;
+      if (detail?.code) setDenial(detail);
+    };
+    window.addEventListener(ACCESS_DENIED_EVENT, onDenied);
+    return () => window.removeEventListener(ACCESS_DENIED_EVENT, onDenied);
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1024px)');
@@ -69,6 +98,7 @@ export function ProtectedLayout() {
 
   const isAdmin = user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique';
   const isSuperAdmin = user.role?.slug === 'super_admin';
+  const isPlatformAdmin = Boolean(user.is_platform_admin);
   const firstName = user.name.trim().split(/\s+/)[0] ?? '';
 
   const stockProduits: NavGroupItem[] = [
@@ -82,6 +112,15 @@ export function ProtectedLayout() {
     ...(isAdmin ? [{ to: '/audit', label: 'Audit', icon: <IconAudit /> }] : []),
     ...(isAdmin ? [{ to: '/cash-discrepancies', label: 'Écarts de caisse', icon: <IconAlert /> }] : []),
     ...(isSuperAdmin ? [{ to: '/inventory', label: 'Inventaire', icon: <IconClipboard /> }] : []),
+    ...(isSuperAdmin && !isPlatformAdmin ? [{ to: '/abonnement', label: 'Mon abonnement', icon: <IconCoin /> }] : []),
+  ];
+
+  const platformItems: NavGroupItem[] = [
+    { to: '/plateforme', label: 'Vue d’ensemble', icon: <IconGrid />, end: true },
+    { to: '/plateforme/clients', label: 'Clients', icon: <IconShop /> },
+    { to: '/plateforme/formules', label: 'Formules', icon: <IconTag /> },
+    { to: '/plateforme/paiements', label: 'Paiements', icon: <IconCoin /> },
+    { to: '/plateforme/historique', label: 'Historique', icon: <IconAudit /> },
   ];
 
   const accountingItems: NavGroupItem[] = [
@@ -122,6 +161,10 @@ export function ProtectedLayout() {
         </div>
 
         <nav className="sidebar-nav">
+          {isPlatformAdmin && (
+            <NavGroup id="platform" label="Super Admin" icon={<IconSettings />} items={platformItems} />
+          )}
+
           <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <IconGrid />
             <span>Tableau de bord</span>
@@ -187,7 +230,20 @@ export function ProtectedLayout() {
           }
         />
         <div className="main">
-          <Outlet />
+          {denial && location.pathname !== '/abonnement' ? (
+            <AccessBlocked
+              denial={denial}
+              onRetry={() => {
+                setDenial(null);
+                loadSubscription();
+              }}
+            />
+          ) : (
+            <>
+              <SubscriptionNotice data={subscription} />
+              <Outlet />
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -104,7 +104,9 @@ export function AccountPage() {
 
   if (!user) return null;
 
-  const roleLabel = ROLE_LABELS[user.role?.slug ?? ''] ?? user.role?.name ?? 'Compte';
+  const roleLabel = user.is_platform_admin
+    ? 'Super Admin plateforme'
+    : ROLE_LABELS[user.role?.slug ?? ''] ?? user.role?.name ?? 'Compte';
   const shopLabel = user.shop?.name ?? 'Toutes les boutiques';
   const monthRevenue = figures?.revenue.this_month ?? 0;
   const budget = Number(user.shop?.monthly_budget ?? 0);

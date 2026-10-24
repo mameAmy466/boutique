@@ -11,6 +11,11 @@ export function formatDate(value: string): string {
   });
 }
 
+/** 24/10/2026 — for dense tables. */
+export function formatShortDate(value: string): string {
+  return new Date(value).toLocaleDateString('fr-FR');
+}
+
 export function initials(name: string | null | undefined): string {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';

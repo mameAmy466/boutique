@@ -6,14 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
+use App\Services\SubscriptionService;
 
 class PlatformDashboardController extends Controller
 {
-    public function __invoke()
+    public function __invoke(SubscriptionService $subscriptionService)
     {
         $subscriptions = Subscription::query()
+            ->with('plan')
             ->whereIn('id', Subscription::query()->selectRaw('max(id)')->where('status', '!=', Subscription::STATUS_CANCELLED)->groupBy('organization_id'))
-            ->get();
+            ->get()
+            ->each(fn (Subscription $subscription) => $subscriptionService->refreshStatus($subscription));
 
         $soon = now()->addDays(7)->toDateString();
         $expiringSoon = $subscriptions->filter(function (Subscription $subscription) use ($soon) {

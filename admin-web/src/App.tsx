@@ -31,6 +31,14 @@ import { IncomeStatementPage } from './pages/IncomeStatementPage';
 import { BalanceSheetPage } from './pages/BalanceSheetPage';
 import { BankReconciliationPage } from './pages/BankReconciliationPage';
 import { AccountingHealthPage } from './pages/AccountingHealthPage';
+import { SubscriptionPage } from './pages/SubscriptionPage';
+import { PlatformRoute } from './components/PlatformRoute';
+import { PlatformDashboardPage } from './pages/platform/PlatformDashboardPage';
+import { PlatformClientsPage } from './pages/platform/PlatformClientsPage';
+import { PlatformClientPage } from './pages/platform/PlatformClientPage';
+import { PlatformPlansPage } from './pages/platform/PlatformPlansPage';
+import { PlatformPaymentsPage } from './pages/platform/PlatformPaymentsPage';
+import { PlatformHistoryPage } from './pages/platform/PlatformHistoryPage';
 
 export default function App() {
   return (
@@ -68,6 +76,15 @@ export default function App() {
             <Route path="/bilan" element={<BalanceSheetPage />} />
             <Route path="/rapprochement-bancaire" element={<BankReconciliationPage />} />
             <Route path="/controle-comptable" element={<AccountingHealthPage />} />
+            <Route path="/abonnement" element={<SubscriptionPage />} />
+            <Route element={<PlatformRoute />}>
+              <Route path="/plateforme" element={<PlatformDashboardPage />} />
+              <Route path="/plateforme/clients" element={<PlatformClientsPage />} />
+              <Route path="/plateforme/clients/:id" element={<PlatformClientPage />} />
+              <Route path="/plateforme/formules" element={<PlatformPlansPage />} />
+              <Route path="/plateforme/paiements" element={<PlatformPaymentsPage />} />
+              <Route path="/plateforme/historique" element={<PlatformHistoryPage />} />
+            </Route>
           </Route>
         </Routes>
       </AuthProvider>

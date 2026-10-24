@@ -2,6 +2,7 @@ import type { ApiErrorBody } from './types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 const TOKEN_KEY = 'boutique_admin_token';
+export const ACCESS_DENIED_EVENT = 'boutique:access-denied';
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -44,6 +45,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   const body = await response.json().catch(() => null);
+
+  // The client's organization is suspended, closed or out of subscription:
+  // the layout swaps the page for an explanation (see ProtectedLayout).
+  if (response.status === 402) {
+    window.dispatchEvent(new CustomEvent(ACCESS_DENIED_EVENT, { detail: body }));
+  }
 
   if (!response.ok) {
     const message = body?.message ?? `Erreur ${response.status}`;

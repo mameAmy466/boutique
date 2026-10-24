@@ -305,7 +305,10 @@ class PlatformOrganizationController extends Controller
     private function summary(Organization $organization): array
     {
         $subscription = $this->subscriptions->currentSubscriptionFor($organization);
-        $subscription?->loadMissing('plan');
+        if ($subscription) {
+            // Show the state the dates imply, even before tonight's check runs.
+            $this->subscriptions->refreshStatus($subscription)->loadMissing('plan');
+        }
         $owner = $organization->users()
             ->whereHas('role', fn ($q) => $q->where('slug', Role::SUPER_ADMIN))
             ->orderBy('id')->first(['id', 'name', 'email']);

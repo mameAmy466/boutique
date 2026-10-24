@@ -75,6 +75,31 @@ minimum est rejetée avec un code `422`.
 Les autorisations par rôle (super admin / admin de boutique / caissier)
 sont appliquées via les policies dans `app/Policies`.
 
+## Plateforme SaaS (multi-clients)
+
+Chaque client est une **organisation** (`Organization`) : ses boutiques,
+utilisateurs, produits, ventes, stock et plan comptable lui appartiennent.
+
+- **Isolation** : les modèles utilisent les traits `BelongsToOrganization`
+  (données de l'organisation) ou `BelongsToTenantShop` (données d'une de ses
+  boutiques). Toute requête est limitée à l'organisation de l'utilisateur
+  connecté : l'identifiant d'un autre client renvoie 404. Les règles de
+  validation passent par `App\Support\TenantRule` (`exists`/`unique` limités
+  au client). Voir `tests/Feature/TenantIsolationTest.php`.
+- **Accès** : `organizations.status` (`active`, `suspended`, `closed`) est
+  distinct de `subscriptions.status` (`trial`, `active`, `past_due`,
+  `expired`, `cancelled`). Le middleware `organization.access` répond **402**
+  sur toutes les routes métier d'un client suspendu, fermé ou dont
+  l'abonnement a expiré ; `/api/me`, `/api/logout` et `/api/subscription`
+  restent accessibles.
+- **Échéances** : `php artisan subscriptions:check` (planifié chaque nuit)
+  passe un essai ou une période terminée en `past_due`, puis en `expired`
+  après le délai de grâce (`grace_days`, 7 jours par défaut).
+- **Super Admin** : les comptes `is_platform_admin` (et eux seuls) accèdent à
+  `/api/platform/*` et aux pages « Super Admin » de l'interface : clients,
+  suspension/réactivation, abonnements, paiements, formules et historique.
+  Le rôle `super_admin` d'un client ne donne accès qu'à sa propre organisation.
+
 ## API
 
 Voir `routes/api.php` pour la liste complète des endpoints. Authentification

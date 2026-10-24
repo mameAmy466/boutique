@@ -4200,3 +4200,118 @@ thead th {
   background: var(--accent-soft);
   color: var(--accent-ink);
 }
+
+/* ---- Abonnement & Super Admin ---- */
+.subscription-notice {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.subscription-notice.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.subscription-notice a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.subscription-grid,
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 16px;
+  margin: 16px 0 24px;
+}
+.subscription-grid .card h2,
+.plans-grid .card h2,
+.danger-zone h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+.subscription-grid .card h3,
+.plans-grid .card h3 {
+  font-size: 14px;
+  margin: 18px 0 8px;
+  color: var(--ink-soft);
+}
+.card-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.card-head-row h2 {
+  margin: 0 !important;
+}
+.subscription-plans,
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.subscription-plans li,
+.plain-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.subscription-plans li .num {
+  margin-left: auto;
+}
+.subscription-plans li.is-current {
+  background: var(--accent-soft);
+}
+.plan-limit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plan-limit input[type='number'] {
+  flex: 1;
+  min-width: 0;
+}
+.plan-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.plan-flags {
+  display: grid;
+  gap: 8px;
+}
+.danger-zone {
+  margin-top: 24px;
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.danger-zone p {
+  color: var(--ink-soft);
+}
+.access-blocked {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+.access-blocked-card {
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+.access-blocked-card h1 {
+  margin: 0 0 12px;
+}
+.access-blocked-actions {
+  justify-content: center;
+  margin-top: 16px;
+}
+tr.is-clickable {
+  cursor: pointer;
+}
