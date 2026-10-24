@@ -65,7 +65,7 @@ export function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="username"
-                placeholder="admin@boutique.test"
+                placeholder="vous@exemple.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -88,9 +88,15 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="pricing-footnote">
-            Pas encore de compte ? <Link to="/tarifs">Voir les offres</Link>
-          </p>
+          <div className="login-signup">
+            <span>Pas encore de compte ?</span>
+            <Link className="login-signup-btn" to="/inscription">
+              Créer un compte
+            </Link>
+            <Link className="login-signup-plans" to="/tarifs">
+              Voir les offres
+            </Link>
+          </div>
         </div>
       </div>
     </div>
