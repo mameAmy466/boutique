@@ -42,12 +42,11 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
 
 /**
  * How a client reaches the platform to pay or ask for reactivation.
- * Placeholder numbers until the real ones are known — keep in sync with
- * site/src/config.ts.
+ * Keep in sync with site/src/config.ts.
  */
 export const PLATFORM_CONTACT = {
-  phoneDisplay: '+221 77 000 00 00',
-  phoneHref: 'tel:+221770000000',
-  whatsapp: '221770000000',
+  phoneDisplay: '+221 77 813 01 32',
+  phoneHref: 'tel:+221778130132',
+  whatsapp: '221778130132',
   email: 'contact@myboutiqu.com',
 };
