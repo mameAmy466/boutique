@@ -3,20 +3,26 @@
 namespace App\Http\Controllers\Api\Platform;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashRegister;
+use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\PlatformAuditLog;
+use App\Models\Product;
 use App\Models\Role;
+use App\Models\Sale;
 use App\Models\Shop;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\OrganizationProvisioner;
 use App\Services\SubscriptionService;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * The platform operator's view of every client. Shops are read without the
@@ -38,9 +44,14 @@ class PlatformOrganizationController extends Controller
             ->orderBy('name');
 
         if ($request->filled('search')) {
-            $needle = '%'.$request->string('search').'%';
-            $query->where(function ($q) use ($needle) {
-                $q->where('name', 'like', $needle)
+            $term = trim((string) $request->string('search'));
+            $needle = '%'.$term.'%';
+            $query->where(function ($q) use ($needle, $term) {
+                // "#12" or "12" also finds the client by its identifier.
+                if (ctype_digit(ltrim($term, '#'))) {
+                    $q->orWhere('id', (int) ltrim($term, '#'));
+                }
+                $q->orWhere('name', 'like', $needle)
                     ->orWhere('email', 'like', $needle)
                     ->orWhere('phone', 'like', $needle)
                     ->orWhereHas('users', fn ($u) => $u->where('name', 'like', $needle)->orWhere('email', 'like', $needle));
@@ -76,6 +87,65 @@ class PlatformOrganizationController extends Controller
                 ->get(['id', 'name', 'email', 'role_id', 'shop_id', 'is_active']),
             'payments' => $organization->payments()->with('recorder:id,name')->latest('paid_at')->latest('id')->get(),
             'audit_logs' => $organization->auditLogs()->with('user:id,name')->latest('id')->limit(50)->get(),
+        ]);
+    }
+
+    /**
+     * Aggregated activity of a client — figures only, never its individual
+     * sales, customers or prices: enough to follow usage and spot an
+     * inactive account without reading the client's business data.
+     */
+    public function activity(Organization $organization)
+    {
+        $figures = Tenant::as($organization->id, function () {
+            $completed = fn () => Sale::query()->where('status', '!=', Sale::STATUS_CANCELLED);
+            $since30 = now()->subDays(30)->startOfDay();
+
+            $daily = $completed()->where('created_at', '>=', now()->subDays(13)->startOfDay())
+                ->get(['total', 'created_at'])
+                ->groupBy(fn (Sale $sale) => $sale->created_at->toDateString())
+                ->map(fn ($sales) => (float) $sales->sum('total'));
+
+            return [
+                'sales' => [
+                    'month_count' => $completed()->where('created_at', '>=', now()->startOfMonth())->count(),
+                    'month_revenue' => (float) $completed()->where('created_at', '>=', now()->startOfMonth())->sum('total'),
+                    'last_30_days_revenue' => (float) $completed()->where('created_at', '>=', $since30)->sum('total'),
+                    'total_count' => $completed()->count(),
+                    'total_revenue' => (float) $completed()->sum('total'),
+                    'last_sale_at' => $completed()->max('created_at'),
+                ],
+                'trend' => collect(range(13, 0))->map(function ($daysAgo) use ($daily) {
+                    $day = now()->subDays($daysAgo)->toDateString();
+
+                    return ['date' => $day, 'revenue' => $daily[$day] ?? 0];
+                })->values(),
+                'usage' => [
+                    'shops' => Shop::count(),
+                    'users' => User::where('organization_id', Tenant::id())->count(),
+                    'registers' => CashRegister::count(),
+                    'products' => Product::count(),
+                    'customers' => Customer::count(),
+                ],
+            ];
+        });
+
+        $userIds = User::where('organization_id', $organization->id)->pluck('id');
+        $lastSeen = PersonalAccessToken::query()
+            ->where('tokenable_type', User::class)
+            ->whereIn('tokenable_id', $userIds)
+            ->max('last_used_at');
+
+        return response()->json([
+            ...$figures,
+            'limits' => $this->subscriptions->limits($organization),
+            'last_seen_at' => $lastSeen,
+            'active_users_7_days' => PersonalAccessToken::query()
+                ->where('tokenable_type', User::class)
+                ->whereIn('tokenable_id', $userIds)
+                ->where('last_used_at', '>=', now()->subDays(7))
+                ->distinct()
+                ->count('tokenable_id'),
         ]);
     }
 

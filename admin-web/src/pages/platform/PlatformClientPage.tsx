@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, firstValidationError } from '../../api/client';
-import type { PlatformOrganizationDetail, PublicPlan, SubscriptionStatus } from '../../api/types';
+import type { PlatformActivity, PlatformOrganizationDetail, PublicPlan, SubscriptionStatus } from '../../api/types';
+import { SalesTrendChart } from '../../components/charts/SalesTrendChart';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { Modal } from '../../components/Modal';
 import { formatDate, formatMoney } from '../../lib/format';
@@ -28,6 +29,7 @@ export function PlatformClientPage() {
   const navigate = useNavigate();
   const [org, setOrg] = useState<PlatformOrganizationDetail | null>(null);
   const [plans, setPlans] = useState<PublicPlan[]>([]);
+  const [activity, setActivity] = useState<PlatformActivity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<'payment' | 'subscription' | 'info' | 'delete' | null>(null);
@@ -48,6 +50,10 @@ export function PlatformClientPage() {
   useEffect(() => {
     load();
     api.get<PublicPlan[]>('/plans').then(setPlans).catch(() => setPlans([]));
+    api
+      .get<PlatformActivity>(`/platform/organizations/${id}/activity`)
+      .then(setActivity)
+      .catch(() => setActivity(null));
   }, [id]);
 
   async function run(action: () => Promise<PlatformOrganizationDetail | void>, close = true) {
@@ -185,6 +191,70 @@ export function PlatformClientPage() {
           </span>
         </div>
       </div>
+
+      {activity && (
+        <section className="catalog-history">
+          <h2>Activité</h2>
+          <p className="hint">
+            Chiffres agrégés uniquement : le détail des ventes, des clients et des prix de la boutique reste privé.
+          </p>
+          <div className="catalog-stats four">
+            <div className="catalog-stat">
+              <span className="label">Ventes ce mois</span>
+              <span className="value num">{activity.sales.month_count}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Chiffre d'affaires ce mois</span>
+              <span className="value num">{formatMoney(activity.sales.month_revenue)}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Dernière vente</span>
+              <span className="value">{activity.sales.last_sale_at ? formatDate(activity.sales.last_sale_at) : 'Aucune'}</span>
+            </div>
+            <div className="catalog-stat">
+              <span className="label">Dernière connexion</span>
+              <span className="value">{activity.last_seen_at ? formatDate(activity.last_seen_at) : 'Jamais'}</span>
+            </div>
+          </div>
+          <div className="subscription-grid">
+            <div>
+              <h3 className="hint">Chiffre d'affaires · 14 jours</h3>
+              <SalesTrendChart data={activity.trend.map((point) => ({ date: point.date, total: point.revenue }))} />
+            </div>
+            <div className="catalog-totals">
+              {(
+                [
+                  ['Boutiques', activity.usage.shops, 'max_shops'],
+                  ['Utilisateurs', activity.usage.users, 'max_users'],
+                  ['Caisses', activity.usage.registers, 'max_registers'],
+                  ['Produits', activity.usage.products, 'max_products'],
+                ] as const
+              ).map(([label, used, key]) => (
+                <div key={key}>
+                  <span>{label}</span>
+                  <span className="num">
+                    {used} / {activity.limits[key] == null ? '∞' : activity.limits[key]}
+                  </span>
+                </div>
+              ))}
+              <div>
+                <span>Clients enregistrés</span>
+                <span className="num">{activity.usage.customers}</span>
+              </div>
+              <div>
+                <span>Utilisateurs actifs (7 jours)</span>
+                <span className="num">{activity.active_users_7_days}</span>
+              </div>
+              <div className="total">
+                <span>Ventes depuis l'inscription</span>
+                <span className="num">
+                  {activity.sales.total_count} · {formatMoney(activity.sales.total_revenue)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="subscription-grid">
         <section className="card">

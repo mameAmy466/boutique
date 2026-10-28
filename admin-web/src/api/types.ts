@@ -763,3 +763,19 @@ export interface PlansMatrix {
   flags: Record<string, { label: string; description: string }>;
   limits: Record<string, { label: string }>;
 }
+
+export interface PlatformActivity {
+  sales: {
+    month_count: number;
+    month_revenue: number;
+    last_30_days_revenue: number;
+    total_count: number;
+    total_revenue: number;
+    last_sale_at: string | null;
+  };
+  trend: { date: string; revenue: number }[];
+  usage: { shops: number; users: number; registers: number; products: number; customers: number };
+  limits: Record<string, number | null>;
+  last_seen_at: string | null;
+  active_users_7_days: number;
+}

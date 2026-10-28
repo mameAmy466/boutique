@@ -63,6 +63,7 @@ export function PlatformClientsPage() {
       if (planFilter && o.subscription?.plan?.code !== planFilter) return false;
       if (subscriptionFilter && o.subscription?.status !== subscriptionFilter) return false;
       if (!needle) return true;
+      if (/^#?\d+$/.test(needle)) return String(o.id) === needle.replace('#', '');
       return [o.name, o.email, o.phone, o.owner?.name, o.owner?.email].some((v) => (v ?? '').toLowerCase().includes(needle));
     });
   }, [organizations, search, statusFilter, planFilter, subscriptionFilter]);
@@ -133,7 +134,7 @@ export function PlatformClientsPage() {
         <div className="list-toolbar">
           <input
             type="text"
-            placeholder="Rechercher un client, un responsable, un e-mail…"
+            placeholder="Rechercher par nom, responsable, e-mail ou n° (#12)…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -193,7 +194,8 @@ export function PlatformClientsPage() {
                   <td data-label="Client">
                     <Link to={`/plateforme/clients/${o.id}`} onClick={(e) => e.stopPropagation()}>
                       {o.name}
-                    </Link>
+                    </Link>{' '}
+                    <span className="hint">#{o.id}</span>
                     <div className="hint">
                       {o.shops_count} boutique{o.shops_count > 1 ? 's' : ''} · {o.users_count} utilisateur
                       {o.users_count > 1 ? 's' : ''}

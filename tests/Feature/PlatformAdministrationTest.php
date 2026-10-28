@@ -225,4 +225,43 @@ class PlatformAdministrationTest extends TestCase
             ->assertJsonPath('owner.email', 'fatou@example.com')
             ->assertJsonPath('subscription.trial_ends_at', now()->addDays(30)->toDateString());
     }
+
+    public function test_the_operator_sees_a_clients_activity_without_its_records(): void
+    {
+        $operator = $this->operator();
+        $clientOrg = $this->createOrganization();
+        $client = $this->makeOwner($clientOrg);
+        $shop = Shop::withoutGlobalScopes()->where('organization_id', $clientOrg->id)->firstOrFail();
+        $register = \App\Models\CashRegister::create(['shop_id' => $shop->id, 'name' => 'Caisse 1']);
+        $session = \App\Models\CashSession::create([
+            'cash_register_id' => $register->id, 'user_id' => $client->id,
+            'opening_amount' => 0, 'opened_at' => now(), 'status' => \App\Models\CashSession::STATUS_OPEN,
+        ]);
+        foreach ([1500, 2500] as $total) {
+            \App\Models\Sale::create([
+                'sale_number' => 'V-'.$total, 'shop_id' => $shop->id, 'user_id' => $client->id,
+                'cash_session_id' => $session->id, 'subtotal' => $total, 'total' => $total, 'payment_method' => 'cash',
+            ]);
+        }
+
+        $this->actingAs($operator, 'sanctum')->getJson("/api/platform/organizations/{$clientOrg->id}/activity")
+            ->assertOk()
+            ->assertJsonPath('sales.month_count', 2)
+            ->assertJsonPath('sales.month_revenue', 4000)
+            ->assertJsonPath('usage.shops', 1)
+            ->assertJsonPath('usage.registers', 1)
+            ->assertJsonMissingPath('sales.0');
+
+        $this->actingAs($client, 'sanctum')->getJson("/api/platform/organizations/{$clientOrg->id}/activity")->assertForbidden();
+    }
+
+    public function test_clients_can_be_found_by_identifier(): void
+    {
+        $operator = $this->operator();
+        $clientOrg = $this->createOrganization();
+
+        $rows = $this->actingAs($operator, 'sanctum')->getJson('/api/platform/organizations?search=%23'.$clientOrg->id)->json();
+
+        $this->assertSame([$clientOrg->id], array_column($rows, 'id'));
+    }
 }
