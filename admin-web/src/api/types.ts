@@ -630,11 +630,19 @@ export interface BalanceSheet {
   total_passif: number;
 }
 
-export type OrganizationStatus = 'active' | 'suspended' | 'closed';
-export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled' | 'suspended';
+export type OrganizationStatus = 'inactive' | 'active' | 'suspended' | 'closed';
+export type RegistrationStatus = 'pending' | 'info_requested' | 'approved' | 'rejected';
+export type SubscriptionStatus = 'pending_payment' | 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled' | 'suspended';
 
 export interface AccessDenial {
-  code: 'organization_suspended' | 'organization_closed' | 'subscription_expired';
+  code:
+    | 'organization_suspended'
+    | 'organization_closed'
+    | 'subscription_expired'
+    | 'registration_pending'
+    | 'registration_info_requested'
+    | 'registration_rejected'
+    | 'organization_pending_payment';
   message: string;
 }
 
@@ -702,6 +710,9 @@ export interface PlatformOrganization {
   email: string | null;
   phone: string | null;
   status: OrganizationStatus;
+  registration_status: RegistrationStatus;
+  registration_note: string | null;
+  reviewed_at: string | null;
   suspended_at: string | null;
   suspension_reason: string | null;
   created_at: string;
@@ -731,7 +742,8 @@ export interface PlatformOrganizationDetail extends PlatformOrganization {
 }
 
 export interface PlatformDashboard {
-  organizations: { total: number; active: number; suspended: number; closed: number };
+  organizations: { total: number; active: number; suspended: number; closed: number; inactive: number };
+  registrations: { pending: number; awaiting_activation: number };
   subscriptions: { trial: number; active: number; past_due: number; expired: number; expiring_soon: number };
   revenue: { month: number; year: number };
   by_plan: Record<string, number>;

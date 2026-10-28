@@ -1,6 +1,7 @@
-import type { OrganizationStatus, SubscriptionStatus } from '../api/types';
+import type { OrganizationStatus, RegistrationStatus, SubscriptionStatus } from '../api/types';
 
 export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
+  pending_payment: 'Paiement attendu',
   trial: "Période d'essai",
   active: 'Actif',
   past_due: 'Paiement en retard',
@@ -10,6 +11,7 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
 };
 
 export const SUBSCRIPTION_STATUS_BADGE: Record<SubscriptionStatus, string> = {
+  pending_payment: 'warn',
   trial: 'neutral',
   active: 'ok',
   past_due: 'warn',
@@ -19,12 +21,14 @@ export const SUBSCRIPTION_STATUS_BADGE: Record<SubscriptionStatus, string> = {
 };
 
 export const ORGANIZATION_STATUS_LABEL: Record<OrganizationStatus, string> = {
+  inactive: 'Inactive',
   active: 'Active',
   suspended: 'Suspendue',
   closed: 'Fermée',
 };
 
 export const ORGANIZATION_STATUS_BADGE: Record<OrganizationStatus, string> = {
+  inactive: 'neutral',
   active: 'ok',
   suspended: 'warn',
   closed: 'bad',
@@ -49,4 +53,18 @@ export const PLATFORM_CONTACT = {
   phoneHref: 'tel:+221778130132',
   whatsapp: '221778130132',
   email: 'contact@myboutiqu.com',
+};
+
+export const REGISTRATION_STATUS_LABEL: Record<RegistrationStatus, string> = {
+  pending: 'En attente',
+  info_requested: 'Infos demandées',
+  approved: 'Acceptée',
+  rejected: 'Refusée',
+};
+
+export const REGISTRATION_STATUS_BADGE: Record<RegistrationStatus, string> = {
+  pending: 'warn',
+  info_requested: 'warn',
+  approved: 'ok',
+  rejected: 'bad',
 };

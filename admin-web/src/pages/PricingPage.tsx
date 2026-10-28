@@ -38,7 +38,7 @@ export function PricingPage() {
 
       <div className="pricing-intro">
         <h1>Un forfait pour chaque commerce</h1>
-        <p>Gestion des ventes, du stock, des caisses et des finances — choisis ton forfait et commence en 15 jours d'essai gratuit.</p>
+        <p>Gestion des ventes, du stock, des caisses et des finances — choisis ton forfait et envoie ta demande d'inscription : notre équipe active ta boutique.</p>
 
         <div className="pricing-toggle">
           <button type="button" className={!annual ? 'active' : ''} onClick={() => setAnnual(false)}>
@@ -69,7 +69,7 @@ export function PricingPage() {
                   <span>/ {annual ? 'an' : 'mois'}</span>
                 </div>
                 <Link to={`/inscription?plan=${plan.code}`} className="btn btn-primary pricing-cta">
-                  Essai gratuit de 15 jours
+                  Demander l’inscription
                 </Link>
                 <ul className="pricing-features">
                   {planFeatureBullets(plan).map((bullet) => (

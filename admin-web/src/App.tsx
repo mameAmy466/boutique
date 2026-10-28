@@ -39,6 +39,7 @@ import { PlatformClientPage } from './pages/platform/PlatformClientPage';
 import { PlatformPlansPage } from './pages/platform/PlatformPlansPage';
 import { PlatformPaymentsPage } from './pages/platform/PlatformPaymentsPage';
 import { PlatformHistoryPage } from './pages/platform/PlatformHistoryPage';
+import { PlatformRegistrationsPage } from './pages/platform/PlatformRegistrationsPage';
 
 export default function App() {
   return (
@@ -79,6 +80,7 @@ export default function App() {
             <Route path="/abonnement" element={<SubscriptionPage />} />
             <Route element={<PlatformRoute />}>
               <Route path="/plateforme" element={<PlatformDashboardPage />} />
+              <Route path="/plateforme/demandes" element={<PlatformRegistrationsPage />} />
               <Route path="/plateforme/clients" element={<PlatformClientsPage />} />
               <Route path="/plateforme/clients/:id" element={<PlatformClientPage />} />
               <Route path="/plateforme/formules" element={<PlatformPlansPage />} />

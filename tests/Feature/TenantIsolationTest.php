@@ -147,15 +147,19 @@ class TenantIsolationTest extends TestCase
 
         $response = $this->postJson('/api/register', [
             'organization_name' => 'Téléphones Diallo', 'name' => 'Moussa Diallo',
-            'email' => 'moussa@example.com', 'password' => 'secret123',
+            'email' => 'moussa@example.com', 'password' => 'secret123', 'phone' => '770000000',
             'shop_name' => 'Diallo Phones', 'shop_code' => 'DIALLO', 'plan_code' => 'pro',
         ])->assertCreated();
+
+        $newUser = User::where('email', 'moussa@example.com')->firstOrFail();
+        // Accepted with a trial by the platform admin, it starts empty.
+        $newUser->organization->update(['status' => Organization::STATUS_ACTIVE, 'registration_status' => Organization::REGISTRATION_APPROVED]);
+        $newUser->organization->currentSubscription()->update(['status' => 'trial', 'trial_ends_at' => now()->addDays(15)]);
 
         $token = $response->json('token');
         $products = $this->withToken($token)->getJson('/api/products')->assertOk()->json();
         $this->assertSame([], $products);
 
-        $newUser = User::where('email', 'moussa@example.com')->firstOrFail();
         $this->assertNotSame($existing['organization']->id, $newUser->organization_id);
         $this->assertFalse($newUser->isPlatformAdmin());
         $this->assertSame(16, Account::where('organization_id', $newUser->organization_id)->count());

@@ -22,11 +22,15 @@ class Subscription extends Model
 
     public const STATUS_EXPIRED = 'expired';
 
+    /** Signup approved (or pending), waiting for the first payment or a trial. */
+    public const STATUS_PENDING_PAYMENT = 'pending_payment';
+
     /** Legacy value: suspension now lives on the organization (Organization::STATUS_SUSPENDED). */
     public const STATUS_SUSPENDED = 'suspended';
 
     public const STATUSES = [
-        self::STATUS_TRIAL, self::STATUS_ACTIVE, self::STATUS_PAST_DUE, self::STATUS_EXPIRED, self::STATUS_CANCELLED,
+        self::STATUS_PENDING_PAYMENT, self::STATUS_TRIAL, self::STATUS_ACTIVE, self::STATUS_PAST_DUE,
+        self::STATUS_EXPIRED, self::STATUS_CANCELLED,
     ];
 
     protected $fillable = [

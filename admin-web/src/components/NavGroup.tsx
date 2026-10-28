@@ -17,6 +17,8 @@ export interface NavGroupItem {
   label: string;
   icon: ReactNode;
   end?: boolean;
+  /** A count to draw attention (e.g. pending requests); hidden when 0. */
+  badge?: number;
 }
 
 export function NavGroup({ id, label, icon, items }: { id: string; label: string; icon: ReactNode; items: NavGroupItem[] }) {
@@ -62,6 +64,7 @@ export function NavGroup({ id, label, icon, items }: { id: string; label: string
           >
             {item.icon}
             <span>{item.label}</span>
+            {item.badge ? <span className="nav-count">{item.badge}</span> : null}
           </NavLink>
         ))}
       </div>

@@ -35,6 +35,14 @@ class PlatformDashboardController extends Controller
                 'active' => Organization::where('status', Organization::STATUS_ACTIVE)->count(),
                 'suspended' => Organization::where('status', Organization::STATUS_SUSPENDED)->count(),
                 'closed' => Organization::where('status', Organization::STATUS_CLOSED)->count(),
+                'inactive' => Organization::where('status', Organization::STATUS_INACTIVE)->count(),
+            ],
+            'registrations' => [
+                'pending' => Organization::whereIn('registration_status', [
+                    Organization::REGISTRATION_PENDING, Organization::REGISTRATION_INFO_REQUESTED,
+                ])->count(),
+                'awaiting_activation' => Organization::where('registration_status', Organization::REGISTRATION_APPROVED)
+                    ->where('status', Organization::STATUS_INACTIVE)->count(),
             ],
             'subscriptions' => [
                 'trial' => $subscriptions->where('status', Subscription::STATUS_TRIAL)->count(),

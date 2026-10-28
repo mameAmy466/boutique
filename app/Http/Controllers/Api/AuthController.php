@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrganizationProvisioner;
+use App\Services\RegistrationNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -28,7 +29,8 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
+            'address' => ['nullable', 'string', 'max:255'],
             'shop_name' => ['required', 'string', 'max:255'],
             'shop_code' => ['required', 'string', 'max:50', 'unique:shops,code'],
             'plan_code' => ['required', Rule::in([Plan::CODE_SIMPLE, Plan::CODE_PRO, Plan::CODE_PRO_MAX])],
@@ -40,6 +42,7 @@ class AuthController extends Controller
             'email.unique' => 'Un compte existe déjà avec cette adresse e-mail.',
             'password.required' => 'Choisis un mot de passe.',
             'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
+            'phone.required' => 'Indique un numéro de téléphone pour que nous puissions te contacter.',
             'shop_name.required' => 'Indique le nom de la boutique.',
             'shop_code.required' => 'Indique un code pour la boutique.',
             'shop_code.unique' => 'Ce code boutique est déjà utilisé, choisis-en un autre.',
@@ -49,7 +52,10 @@ class AuthController extends Controller
 
         $plan = Plan::where('code', $data['plan_code'])->where('is_active', true)->firstOrFail();
 
-        $user = app(OrganizationProvisioner::class)->create($data, $plan);
+        // The shop stays inactive until the platform admin approves it; the
+        // owner is logged in to follow the request (see /subscription).
+        $user = app(OrganizationProvisioner::class)->register($data, $plan);
+        app(RegistrationNotifier::class)->submitted($user->organization, $plan);
 
         $token = $user->createToken('api')->plainTextToken;
 

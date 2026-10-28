@@ -4376,3 +4376,45 @@ tr.is-clickable {
   align-items: center;
   margin-top: 16px;
 }
+.activation-choice {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  display: grid;
+  gap: 8px;
+}
+.activation-choice legend {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding: 0 4px;
+}
+.activation-choice label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13.5px;
+}
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.nav-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

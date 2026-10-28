@@ -235,7 +235,12 @@ export function PlatformClientsPage() {
                     <span className={`badge ${ORGANIZATION_STATUS_BADGE[o.status]}`}>{ORGANIZATION_STATUS_LABEL[o.status]}</span>
                   </td>
                   <td data-label="Action" onClick={(e) => e.stopPropagation()}>
-                    {!o.is_platform_owner && o.status !== 'closed' && (
+                    {o.status === 'inactive' && (
+                      <Link className="btn btn-sm" to="/plateforme/demandes">
+                        Voir la demande
+                      </Link>
+                    )}
+                    {!o.is_platform_owner && o.status !== 'closed' && o.status !== 'inactive' && (
                       <button
                         type="button"
                         className={`btn btn-sm${o.status === 'active' ? ' btn-danger' : ''}`}

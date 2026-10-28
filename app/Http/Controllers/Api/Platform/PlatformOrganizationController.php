@@ -207,6 +207,12 @@ class PlatformOrganizationController extends Controller
 
     public function reactivate(Organization $organization)
     {
+        abort_if(
+            $organization->status === Organization::STATUS_INACTIVE,
+            422,
+            "Cette boutique n'a pas encore été activée : acceptez sa demande d'inscription.",
+        );
+
         $organization->update([
             'status' => Organization::STATUS_ACTIVE,
             'suspended_at' => null,
@@ -260,6 +266,137 @@ class PlatformOrganizationController extends Controller
         });
 
         return response()->noContent();
+    }
+
+    /** Signup requests: pending and waiting for information first, then the decided ones. */
+    public function registrations(Request $request)
+    {
+        $status = $request->string('status')->toString() ?: 'open';
+
+        $query = Organization::query()
+            ->withCount(['shops' => fn ($q) => $q->withoutGlobalScope('organization'), 'users'])
+            ->latest('id');
+
+        match ($status) {
+            'open' => $query->whereIn('registration_status', [Organization::REGISTRATION_PENDING, Organization::REGISTRATION_INFO_REQUESTED]),
+            // Accepted but not usable yet: waiting for the first payment.
+            'awaiting_activation' => $query->where('registration_status', Organization::REGISTRATION_APPROVED)
+                ->where('status', Organization::STATUS_INACTIVE),
+            'all' => $query->whereNotNull('registration_status'),
+            default => $query->where('registration_status', $status),
+        };
+
+        return response()->json($query->limit(200)->get()->map(fn (Organization $o) => $this->summary($o)));
+    }
+
+    /**
+     * Accepts a signup, with one of three activations:
+     * - trial: usable at once for trial_days;
+     * - paid: records the first payment, usable at once;
+     * - pending_payment: accepted but still inactive until a payment is recorded.
+     * Also activates an accepted shop that was waiting for its payment.
+     */
+    public function approve(Request $request, Organization $organization)
+    {
+        $data = $request->validate([
+            'activation' => ['required', Rule::in(['trial', 'paid', 'pending_payment'])],
+            'plan_code' => ['nullable', Rule::exists('plans', 'code')],
+            'trial_days' => ['required_if:activation,trial', 'nullable', 'integer', 'min:1', 'max:365'],
+            'amount' => ['required_if:activation,paid', 'nullable', 'numeric', 'min:0'],
+            'method' => ['required_if:activation,paid', 'nullable', Rule::in(SubscriptionPayment::METHODS)],
+            'months' => ['required_if:activation,paid', 'nullable', 'integer', 'min:1', 'max:36'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        abort_if(
+            in_array($organization->status, [Organization::STATUS_SUSPENDED, Organization::STATUS_CLOSED], true),
+            422,
+            'Cette boutique est suspendue ou fermée : utilisez Réactiver.',
+        );
+
+        DB::transaction(function () use ($request, $organization, $data) {
+            $subscription = $this->subscriptions->currentSubscriptionFor($organization)
+                ?? new Subscription(['organization_id' => $organization->id]);
+
+            if (isset($data['plan_code'])) {
+                $subscription->plan_id = Plan::where('code', $data['plan_code'])->value('id');
+            }
+            abort_unless($subscription->plan_id, 422, 'Choisis une formule.');
+            $subscription->save();
+
+            $planName = $subscription->plan()->value('name');
+            $this->markApproved($request, $organization, $data['note'] ?? null);
+            PlatformAuditLog::record($organization, 'registration_approved', "Inscription acceptée (formule {$planName}).");
+
+            if ($data['activation'] === 'trial') {
+                $subscription->fill([
+                    'status' => Subscription::STATUS_TRIAL,
+                    'trial_ends_at' => now()->addDays($data['trial_days'])->toDateString(),
+                    'current_period_end' => null,
+                ])->save();
+                $organization->update(['status' => Organization::STATUS_ACTIVE]);
+                PlatformAuditLog::record($organization, 'organization_activated', "Boutique activée avec {$data['trial_days']} jours d'essai.");
+            } elseif ($data['activation'] === 'paid') {
+                $this->applyPayment($request, $organization, [...$data, 'plan_code' => $data['plan_code'] ?? null]);
+            } else {
+                $subscription->update(['status' => Subscription::STATUS_PENDING_PAYMENT]);
+            }
+        });
+
+        return $this->show($organization->fresh());
+    }
+
+    public function reject(Request $request, Organization $organization)
+    {
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
+
+        $this->guardNotOwnOrganization($request, $organization);
+
+        // The request and its data are kept: it can still be accepted later.
+        $organization->update([
+            'status' => Organization::STATUS_INACTIVE,
+            'registration_status' => Organization::REGISTRATION_REJECTED,
+            'registration_note' => $data['reason'] ?? null,
+            'reviewed_at' => now(),
+            'reviewed_by' => $request->user()->id,
+        ]);
+        PlatformAuditLog::record($organization, 'registration_rejected', 'Inscription refusée'.(
+            isset($data['reason']) ? ' : '.$data['reason'] : '.'
+        ));
+
+        return $this->show($organization);
+    }
+
+    public function requestInfo(Request $request, Organization $organization)
+    {
+        $data = $request->validate(['message' => ['required', 'string', 'max:1000']], [
+            'message.required' => 'Précise les informations demandées.',
+        ]);
+
+        abort_unless($organization->isAwaitingReview(), 422, "Cette demande d'inscription a déjà été traitée.");
+
+        $organization->update([
+            'registration_status' => Organization::REGISTRATION_INFO_REQUESTED,
+            'registration_note' => $data['message'],
+        ]);
+        PlatformAuditLog::record($organization, 'registration_info_requested', 'Informations demandées : '.$data['message']);
+
+        return $this->show($organization);
+    }
+
+    private function markApproved(Request $request, Organization $organization, ?string $note = null): void
+    {
+        if ($organization->registration_status === Organization::REGISTRATION_APPROVED) {
+            return;
+        }
+
+        $organization->update([
+            'registration_status' => Organization::REGISTRATION_APPROVED,
+            'registration_note' => $note,
+            'reviewed_at' => now(),
+            'reviewed_by' => $request->user()->id,
+        ]);
     }
 
     public function updateSubscription(Request $request, Organization $organization)
@@ -316,7 +453,15 @@ class PlatformOrganizationController extends Controller
             'reactivate' => ['nullable', 'boolean'],
         ]);
 
-        $payment = DB::transaction(function () use ($request, $organization, $data) {
+        $this->applyPayment($request, $organization, $data);
+
+        return $this->show($organization->fresh())->setStatusCode(201);
+    }
+
+    /** @return SubscriptionPayment */
+    private function applyPayment(Request $request, Organization $organization, array $data): SubscriptionPayment
+    {
+        return DB::transaction(function () use ($request, $organization, $data) {
             $subscription = $this->subscriptions->currentSubscriptionFor($organization);
             $planId = isset($data['plan_code'])
                 ? Plan::where('code', $data['plan_code'])->value('id')
@@ -366,10 +511,16 @@ class PlatformOrganizationController extends Controller
                 PlatformAuditLog::record($organization, 'organization_reactivated', 'Accès réactivé après paiement.');
             }
 
+            // A first payment from a shop that signed up opens it: being
+            // paid means the request is accepted.
+            if ($organization->status === Organization::STATUS_INACTIVE) {
+                $this->markApproved($request, $organization);
+                $organization->update(['status' => Organization::STATUS_ACTIVE]);
+                PlatformAuditLog::record($organization, 'organization_activated', 'Boutique activée après paiement.');
+            }
+
             return $payment;
         });
-
-        return $this->show($organization->fresh())->setStatusCode(201);
     }
 
     private function summary(Organization $organization): array
@@ -391,6 +542,9 @@ class PlatformOrganizationController extends Controller
             'email' => $organization->email,
             'phone' => $organization->phone,
             'status' => $organization->status,
+            'registration_status' => $organization->registration_status,
+            'registration_note' => $organization->registration_note,
+            'reviewed_at' => $organization->reviewed_at,
             'suspended_at' => $organization->suspended_at,
             'suspension_reason' => $organization->suspension_reason,
             'created_at' => $organization->created_at,

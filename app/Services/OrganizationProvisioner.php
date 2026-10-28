@@ -13,35 +13,69 @@ use Illuminate\Support\Facades\DB;
 /**
  * Creates a new client: its organization (with its own chart of accounts,
  * see Organization::booted), first shop, subscription and owner account.
- * Used by self-service signup and by the platform admin.
+ *
+ * - register(): self-service signup. Nothing is usable until the platform
+ *   admin approves it (organization inactive, request pending, subscription
+ *   waiting for payment); the owner can log in to follow the request.
+ * - create(): a client set up by the platform admin, active straight away
+ *   on a trial.
  */
 class OrganizationProvisioner
 {
     public const TRIAL_DAYS = 15;
 
     /**
-     * @param  array{organization_name: string, name: string, email: string, password: string, phone?: ?string, shop_name: string, shop_code: string}  $data
+     * @param  array{organization_name: string, name: string, email: string, password: string, phone?: ?string, address?: ?string, shop_name: string, shop_code: string}  $data
+     */
+    public function register(array $data, Plan $plan): User
+    {
+        return $this->provision($data, $plan, [
+            'status' => Organization::STATUS_INACTIVE,
+            'registration_status' => Organization::REGISTRATION_PENDING,
+        ], [
+            'status' => Subscription::STATUS_PENDING_PAYMENT,
+        ]);
+    }
+
+    /**
+     * @param  array{organization_name: string, name: string, email: string, password: string, phone?: ?string, address?: ?string, shop_name: string, shop_code: string}  $data
      */
     public function create(array $data, Plan $plan, int $trialDays = self::TRIAL_DAYS): User
     {
-        return DB::transaction(function () use ($data, $plan, $trialDays) {
+        return $this->provision($data, $plan, [
+            'status' => Organization::STATUS_ACTIVE,
+            'registration_status' => Organization::REGISTRATION_APPROVED,
+            'reviewed_at' => now(),
+            'reviewed_by' => auth()->id(),
+        ], [
+            'status' => Subscription::STATUS_TRIAL,
+            'trial_ends_at' => now()->addDays($trialDays)->toDateString(),
+        ]);
+    }
+
+    private function provision(array $data, Plan $plan, array $organizationState, array $subscriptionState): User
+    {
+        return DB::transaction(function () use ($data, $plan, $organizationState, $subscriptionState) {
             $organization = Organization::create([
                 'name' => $data['organization_name'],
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
+                ...$organizationState,
             ]);
 
             Shop::create([
                 'organization_id' => $organization->id,
                 'name' => $data['shop_name'],
                 'code' => $data['shop_code'],
+                'address' => $data['address'] ?? null,
+                'manager_name' => $data['name'],
+                'phone' => $data['phone'] ?? null,
             ]);
 
             Subscription::create([
                 'organization_id' => $organization->id,
                 'plan_id' => $plan->id,
-                'status' => Subscription::STATUS_TRIAL,
-                'trial_ends_at' => now()->addDays($trialDays)->toDateString(),
+                ...$subscriptionState,
             ]);
 
             // The owner administers their own organization ("super_admin"

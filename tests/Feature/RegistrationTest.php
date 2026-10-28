@@ -29,9 +29,9 @@ class RegistrationTest extends TestCase
         ], $overrides);
     }
 
-    public function test_registration_creates_the_organization_shop_and_a_trial_subscription_and_logs_in(): void
+    public function test_registration_creates_an_inactive_shop_waiting_for_approval_and_logs_in(): void
     {
-        $response = $this->postJson('/api/register', $this->payload());
+        $response = $this->postJson('/api/register', $this->payload(['address' => 'Rue 10, Plateau']));
 
         $response->assertCreated();
         $this->assertNotEmpty($response->json('token'));
@@ -39,23 +39,46 @@ class RegistrationTest extends TestCase
         $this->assertSame('super_admin', $response->json('user.role.slug'));
 
         $organization = Organization::where('name', 'Ma Boutique Sarl')->firstOrFail();
-        $shop = Shop::where('code', 'BPL')->firstOrFail();
+        $this->assertSame(Organization::STATUS_INACTIVE, $organization->status);
+        $this->assertSame(Organization::REGISTRATION_PENDING, $organization->registration_status);
+
+        $shop = Shop::withoutGlobalScopes()->where('code', 'BPL')->firstOrFail();
         $this->assertSame($organization->id, $shop->organization_id);
+        $this->assertSame('Rue 10, Plateau', $shop->address);
 
         $user = User::where('email', 'awa@example.com')->firstOrFail();
         $this->assertSame($organization->id, $user->organization_id);
         $this->assertNull($user->shop_id);
         $this->assertFalse($user->isPlatformAdmin());
 
+        // No free trial before the platform admin decides.
         $subscription = $organization->currentSubscription();
-        $this->assertSame(Subscription::STATUS_TRIAL, $subscription->status);
+        $this->assertSame(Subscription::STATUS_PENDING_PAYMENT, $subscription->status);
         $this->assertSame(Plan::CODE_PRO, $subscription->plan->code);
-        $this->assertSame(now()->addDays(15)->toDateString(), $subscription->trial_ends_at->toDateString());
+        $this->assertNull($subscription->trial_ends_at);
 
-        // The returned token must actually authenticate.
-        $me = $this->withHeader('Authorization', "Bearer {$response->json('token')}")->getJson('/api/me');
-        $me->assertOk();
-        $this->assertSame('awa@example.com', $me->json('email'));
+        // The token works, to follow the request — but nothing else is usable.
+        $token = $response->json('token');
+        $this->withToken($token)->getJson('/api/me')->assertOk()->assertJsonPath('email', 'awa@example.com');
+        $this->withToken($token)->getJson('/api/subscription')->assertOk()->assertJsonPath('access.code', 'registration_pending');
+        $this->withToken($token)->getJson('/api/products')->assertStatus(402)->assertJsonPath('code', 'registration_pending');
+        $this->withToken($token)->postJson('/api/products', ['name' => 'X', 'reference' => 'X'])->assertStatus(402);
+    }
+
+    public function test_registration_requires_a_phone_number(): void
+    {
+        $this->postJson('/api/register', $this->payload(['phone' => null]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('phone');
+    }
+
+    public function test_a_signup_cannot_make_itself_platform_admin(): void
+    {
+        $this->postJson('/api/register', $this->payload(['is_platform_admin' => true, 'status' => 'active']))->assertCreated();
+
+        $user = User::where('email', 'awa@example.com')->firstOrFail();
+        $this->assertFalse($user->isPlatformAdmin());
+        $this->assertSame(Organization::STATUS_INACTIVE, $user->organization->status);
     }
 
     public function test_registration_rejects_a_duplicate_email_with_a_french_message(): void

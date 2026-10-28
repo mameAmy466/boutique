@@ -5,11 +5,13 @@ import type { PlatformActivity, PlatformOrganizationDetail, PublicPlan, Subscrip
 import { SalesTrendChart } from '../../components/charts/SalesTrendChart';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { Modal } from '../../components/Modal';
+import { ApproveRegistrationModal } from '../../components/ApproveRegistrationModal';
 import { formatDate, formatMoney } from '../../lib/format';
 import {
   ORGANIZATION_STATUS_BADGE,
   ORGANIZATION_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
+  REGISTRATION_STATUS_LABEL,
   SUBSCRIPTION_STATUS_BADGE,
   SUBSCRIPTION_STATUS_LABEL,
 } from '../../lib/subscription';
@@ -32,7 +34,7 @@ export function PlatformClientPage() {
   const [activity, setActivity] = useState<PlatformActivity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [modal, setModal] = useState<'payment' | 'subscription' | 'info' | 'delete' | null>(null);
+  const [modal, setModal] = useState<'payment' | 'subscription' | 'info' | 'delete' | 'approve' | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [payment, setPayment] = useState({ amount: '', method: 'wave', months: '1', reference: '', plan_code: '', paid_at: '', note: '' });
@@ -125,6 +127,20 @@ export function PlatformClientPage() {
     run(() => api.post(`/platform/organizations/${org!.id}/reactivate`));
   }
 
+  function reviewAction(path: 'reject' | 'request-info') {
+    const text =
+      path === 'reject'
+        ? window.prompt(`Refuser la demande de « ${org!.name} » ? Motif communiqué au client (facultatif) :`, '')
+        : window.prompt('Quelles informations demander au client ?', '');
+    if (text === null || (path === 'request-info' && !text.trim())) return;
+    run(() =>
+      api.post<PlatformOrganizationDetail>(
+        `/platform/organizations/${org!.id}/${path}`,
+        path === 'reject' ? { reason: text || null } : { message: text },
+      ),
+    );
+  }
+
   function closeAccount() {
     if (!window.confirm(`Fermer définitivement le compte « ${org!.name} » ? Ses utilisateurs ne pourront plus se connecter.`)) return;
     run(() => api.post(`/platform/organizations/${org!.id}/close`));
@@ -136,7 +152,16 @@ export function PlatformClientPage() {
         items={[{ label: 'Super Admin', to: '/plateforme' }, { label: 'Clients', to: '/plateforme/clients' }, { label: org.name }]}
       />
       {error && <div className="alert error">{error}</div>}
-      {org.status !== 'active' && (
+      {org.status === 'inactive' && (
+        <div className="alert subscription-notice">
+          Demande d'inscription : <strong>{REGISTRATION_STATUS_LABEL[org.registration_status]}</strong>
+          {org.registration_note ? ` — ${org.registration_note}` : ''}.{' '}
+          {org.registration_status === 'approved'
+            ? 'La boutique reste inactive jusqu’à son activation (essai ou paiement).'
+            : 'La boutique ne peut rien faire tant que la demande n’est pas acceptée.'}
+        </div>
+      )}
+      {(org.status === 'suspended' || org.status === 'closed') && (
         <div className="alert error">
           Accès {ORGANIZATION_STATUS_LABEL[org.status].toLowerCase()}
           {org.suspended_at ? ` depuis le ${formatDate(org.suspended_at)}` : ''}
@@ -161,10 +186,27 @@ export function PlatformClientPage() {
               Suspendre
             </button>
           )}
-          {!org.is_platform_owner && org.status !== 'active' && (
+          {!org.is_platform_owner && (org.status === 'suspended' || org.status === 'closed') && (
             <button type="button" className="btn" onClick={reactivate} disabled={busy}>
               Réactiver
             </button>
+          )}
+          {org.status === 'inactive' && (
+            <>
+              <button type="button" className="btn" onClick={() => setModal('approve')} disabled={busy}>
+                {org.registration_status === 'approved' ? 'Activer' : 'Accepter'}
+              </button>
+              {(org.registration_status === 'pending' || org.registration_status === 'info_requested') && (
+                <button type="button" className="btn" onClick={() => reviewAction('request-info')} disabled={busy}>
+                  Demander des infos
+                </button>
+              )}
+              {org.registration_status !== 'rejected' && (
+                <button type="button" className="btn btn-danger" onClick={() => reviewAction('reject')} disabled={busy}>
+                  Refuser
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -443,6 +485,17 @@ export function PlatformClientPage() {
             </>
           )}
         </section>
+      )}
+
+      {modal === 'approve' && (
+        <ApproveRegistrationModal
+          organization={org}
+          onClose={() => setModal(null)}
+          onDone={(updated) => {
+            setOrg(updated);
+            setModal(null);
+          }}
+        />
       )}
 
       {modal === 'payment' && (

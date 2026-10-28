@@ -53,6 +53,29 @@ class SubscriptionService
             ];
         }
 
+        if ($organization->status === Organization::STATUS_INACTIVE) {
+            $note = $organization->registration_note ? ' '.$organization->registration_note : '';
+
+            return match ($organization->registration_status) {
+                Organization::REGISTRATION_REJECTED => [
+                    'code' => 'registration_rejected',
+                    'message' => "Votre demande d'inscription n'a pas été acceptée.".$note,
+                ],
+                Organization::REGISTRATION_INFO_REQUESTED => [
+                    'code' => 'registration_info_requested',
+                    'message' => "Nous avons besoin d'informations complémentaires pour valider votre inscription.".$note,
+                ],
+                Organization::REGISTRATION_APPROVED => [
+                    'code' => 'organization_pending_payment',
+                    'message' => 'Votre inscription est acceptée. Votre boutique sera activée dès réception de votre paiement.',
+                ],
+                default => [
+                    'code' => 'registration_pending',
+                    'message' => "Votre inscription est en cours de validation. Vous pourrez utiliser votre boutique dès qu'elle sera activée.",
+                ],
+            };
+        }
+
         if ($organization->status === Organization::STATUS_SUSPENDED) {
             return [
                 'code' => 'organization_suspended',

@@ -22,7 +22,7 @@ export function PlatformDashboardPage() {
         soon.setDate(soon.getDate() + 7);
         setAttention(
           organizations
-            .filter((o) => !o.is_platform_owner && o.status !== 'closed')
+            .filter((o) => !o.is_platform_owner && o.status !== 'closed' && o.status !== 'inactive')
             .filter((o) => {
               const s = o.subscription;
               if (!s) return true;
@@ -49,6 +49,21 @@ export function PlatformDashboardPage() {
           Gérer les clients
         </Link>
       </div>
+
+      {data && data.registrations.pending > 0 && (
+        <div className="alert subscription-notice">
+          {data.registrations.pending} nouvelle{data.registrations.pending > 1 ? 's' : ''} demande
+          {data.registrations.pending > 1 ? 's' : ''} d'inscription à traiter.{' '}
+          <Link to="/plateforme/demandes">Voir les demandes</Link>
+        </div>
+      )}
+      {data && data.registrations.awaiting_activation > 0 && (
+        <div className="alert subscription-notice">
+          {data.registrations.awaiting_activation} boutique{data.registrations.awaiting_activation > 1 ? 's' : ''} acceptée
+          {data.registrations.awaiting_activation > 1 ? 's' : ''} en attente de paiement.{' '}
+          <Link to="/plateforme/demandes">Activer</Link>
+        </div>
+      )}
 
       <div className="catalog-stats four">
         <div className="catalog-stat">

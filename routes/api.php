@@ -48,12 +48,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Platform (Super Admin) space: the operator of the SaaS only.
     Route::middleware('platform.admin')->prefix('platform')->group(function () {
         Route::get('/dashboard', PlatformDashboardController::class);
+        Route::get('/registrations', [PlatformOrganizationController::class, 'registrations']);
         Route::get('/organizations', [PlatformOrganizationController::class, 'index']);
         Route::post('/organizations', [PlatformOrganizationController::class, 'store']);
         Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show']);
         Route::get('/organizations/{organization}/activity', [PlatformOrganizationController::class, 'activity']);
         Route::put('/organizations/{organization}', [PlatformOrganizationController::class, 'update']);
         Route::delete('/organizations/{organization}', [PlatformOrganizationController::class, 'destroy']);
+        Route::post('/organizations/{organization}/approve', [PlatformOrganizationController::class, 'approve']);
+        Route::post('/organizations/{organization}/reject', [PlatformOrganizationController::class, 'reject']);
+        Route::post('/organizations/{organization}/request-info', [PlatformOrganizationController::class, 'requestInfo']);
         Route::post('/organizations/{organization}/suspend', [PlatformOrganizationController::class, 'suspend']);
         Route::post('/organizations/{organization}/reactivate', [PlatformOrganizationController::class, 'reactivate']);
         Route::post('/organizations/{organization}/close', [PlatformOrganizationController::class, 'close']);

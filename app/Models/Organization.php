@@ -22,14 +22,29 @@ class Organization extends Model
 
     public const STATUS_CLOSED = 'closed';
 
-    public const STATUSES = [self::STATUS_ACTIVE, self::STATUS_SUSPENDED, self::STATUS_CLOSED];
+    /** Created by a signup but not authorized yet by the platform admin. */
+    public const STATUS_INACTIVE = 'inactive';
 
-    protected $fillable = ['name', 'email', 'phone', 'status', 'suspended_at', 'suspension_reason'];
+    public const STATUSES = [self::STATUS_INACTIVE, self::STATUS_ACTIVE, self::STATUS_SUSPENDED, self::STATUS_CLOSED];
+
+    public const REGISTRATION_PENDING = 'pending';
+
+    public const REGISTRATION_INFO_REQUESTED = 'info_requested';
+
+    public const REGISTRATION_APPROVED = 'approved';
+
+    public const REGISTRATION_REJECTED = 'rejected';
+
+    protected $fillable = [
+        'name', 'email', 'phone', 'status', 'suspended_at', 'suspension_reason',
+        'registration_status', 'registration_note', 'reviewed_at', 'reviewed_by',
+    ];
 
     protected function casts(): array
     {
         return [
             'suspended_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -81,6 +96,12 @@ class Organization extends Model
             ->whereNotIn('status', [Subscription::STATUS_CANCELLED])
             ->latest('id')
             ->first();
+    }
+
+    /** A signup the platform admin still has to decide on. */
+    public function isAwaitingReview(): bool
+    {
+        return in_array($this->registration_status, [self::REGISTRATION_PENDING, self::REGISTRATION_INFO_REQUESTED], true);
     }
 
     public function isActive(): bool

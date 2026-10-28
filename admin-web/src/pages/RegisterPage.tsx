@@ -30,6 +30,7 @@ export function RegisterPage() {
     email: '',
     password: '',
     phone: '',
+    address: '',
     shop_name: '',
     shop_code: '',
     plan_code: requestedPlan,
@@ -79,13 +80,15 @@ export function RegisterPage() {
           </div>
           <h1>Créer ton compte</h1>
           <p>
-            15 jours d'essai gratuit sur le forfait {PLAN_LABEL[form.plan_code] ?? form.plan_code}, sans engagement.
+            Forfait {PLAN_LABEL[form.plan_code] ?? form.plan_code}
             {selectedPlan && (
               <>
                 {' '}
-                Ensuite <strong>{formatMoney(selectedPlan.monthly_price)}</strong> / mois.
+                · <strong>{formatMoney(selectedPlan.monthly_price)}</strong> / mois
               </>
             )}
+            . Ta demande est vérifiée par notre équipe, qui te contacte pour activer ta boutique (période d'essai
+            ou paiement).
           </p>
         </div>
 
@@ -155,8 +158,19 @@ export function RegisterPage() {
               />
             </div>
             <div className="field">
-              <label htmlFor="phone">Téléphone (optionnel)</label>
-              <input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <label htmlFor="phone">Téléphone</label>
+              <input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="address">Adresse de la boutique</label>
+              <input id="address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <div className="field">
               <label htmlFor="password">Mot de passe</label>
@@ -171,7 +185,7 @@ export function RegisterPage() {
               />
             </div>
             <button className="login-submit" type="submit" disabled={submitting}>
-              {submitting ? 'Création du compte…' : "Démarrer l'essai gratuit"}
+              {submitting ? 'Envoi de la demande…' : 'Envoyer ma demande d’inscription'}
             </button>
           </form>
 

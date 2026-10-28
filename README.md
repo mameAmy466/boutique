@@ -92,6 +92,14 @@ utilisateurs, produits, ventes, stock et plan comptable lui appartiennent.
   sur toutes les routes métier d'un client suspendu, fermé ou dont
   l'abonnement a expiré ; `/api/me`, `/api/logout` et `/api/subscription`
   restent accessibles.
+- **Inscriptions** : une boutique qui s'inscrit (`POST /api/register`) est
+  créée inactive (`organizations.status = inactive`, demande `pending`,
+  abonnement `pending_payment`) : le responsable peut se connecter pour suivre
+  sa demande, rien d'autre. Les Super Admins reçoivent un e-mail (si l'envoi de
+  mails est configuré) et voient la demande dans « Inscriptions ». Ils
+  l'acceptent avec un essai, avec un premier paiement, ou en attendant le
+  paiement ; ils peuvent aussi demander des informations ou la refuser (les
+  données sont conservées).
 - **Échéances** : `php artisan subscriptions:check` (planifié chaque nuit)
   passe un essai ou une période terminée en `past_due`, puis en `expired`
   après le délai de grâce (`grace_days`, 7 jours par défaut).

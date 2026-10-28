@@ -41,10 +41,19 @@ export function ProtectedLayout() {
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const [denial, setDenial] = useState<AccessDenial | null>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  function loadPendingRequests() {
+    if (!user?.is_platform_admin) return;
+    api
+      .get<{ registrations: { pending: number } }>('/platform/dashboard')
+      .then((d) => setPendingRequests(d.registrations.pending))
+      .catch(() => setPendingRequests(0));
+  }
 
   function loadSubscription() {
     api
@@ -59,7 +68,13 @@ export function ProtectedLayout() {
 
   useEffect(() => {
     if (user) loadSubscription();
+    loadPendingRequests();
   }, [user?.id]);
+
+  // New signups show up in the menu without reloading the page.
+  useEffect(() => {
+    loadPendingRequests();
+  }, [location.pathname]);
 
   // Rights change when the client renews or switches plan, or when the
   // Super Admin edits a formula: pick that up whenever the tab comes back.
@@ -142,6 +157,7 @@ export function ProtectedLayout() {
 
   const platformItems: NavGroupItem[] = [
     { to: '/plateforme', label: 'Vue d’ensemble', icon: <IconGrid />, end: true },
+    { to: '/plateforme/demandes', label: 'Inscriptions', icon: <IconSend />, badge: pendingRequests },
     { to: '/plateforme/clients', label: 'Clients', icon: <IconShop /> },
     { to: '/plateforme/formules', label: 'Formules', icon: <IconTag /> },
     { to: '/plateforme/paiements', label: 'Paiements', icon: <IconCoin /> },
