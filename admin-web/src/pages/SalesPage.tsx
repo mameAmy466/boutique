@@ -9,6 +9,7 @@ import { Pager } from '../components/Pager';
 import { InvoiceReceipt } from '../components/InvoiceReceipt';
 import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney, initials } from '../lib/format';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const BarcodeScannerModal = lazy(() =>
   import('../components/BarcodeScannerModal').then((m) => ({ default: m.BarcodeScannerModal })),
@@ -37,6 +38,7 @@ interface Line {
 }
 
 export function SalesPage() {
+  const canExport = useSubscription().can('excel_export');
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
   const isAdmin = isSuperAdmin || user?.role?.slug === 'admin_boutique';
@@ -397,9 +399,11 @@ export function SalesPage() {
                   </option>
                 ))}
               </select>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={sales.length === 0}>
-                ⬇️ CSV
-              </button>
+              {canExport && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={sales.length === 0}>
+                  ⬇️ CSV
+                </button>
+              )}
             </div>
 
             <div className="table-wrap table-scroll cards-sm">

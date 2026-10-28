@@ -9,6 +9,7 @@ import { IconTrend } from '../components/DashboardIcons';
 import { exportToCsv } from '../lib/csv';
 import { formatMoney } from '../lib/format';
 import { ACCOUNT_TYPE_LABEL } from '../lib/accountTypes';
+import { useSubscription } from '../context/SubscriptionContext';
 
 function soldeLabel(balance: number): string {
   if (Math.abs(balance) < 0.01) return formatMoney(0);
@@ -16,6 +17,7 @@ function soldeLabel(balance: number): string {
 }
 
 export function BalanceComptablePage() {
+  const canExport = useSubscription().can('excel_export');
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
   const isAdmin = isSuperAdmin || user?.role?.slug === 'admin_boutique';
@@ -104,9 +106,11 @@ export function BalanceComptablePage() {
             setToFilter(to);
           }}
         />
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={!balance || balance.rows.length === 0}>
-          ⬇️ Exporter CSV
-        </button>
+        {canExport && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={!balance || balance.rows.length === 0}>
+            ⬇️ Exporter CSV
+          </button>
+        )}
       </div>
 
       {balance && (

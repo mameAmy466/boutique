@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Organization;
+use App\Models\Plan;
 use App\Models\PlanFeature;
 use App\Models\Subscription;
+use App\Support\PlanFeatures;
 
 /**
  * Resolves what an organization's current subscription allows — quotas
@@ -158,6 +160,87 @@ class SubscriptionService
         }
 
         return (int) $value + $extra;
+    }
+
+    /**
+     * Every on/off feature of the registry for this organization's current
+     * plan — what the interface uses to build its menus.
+     *
+     * @return array<string, bool>
+     */
+    public function features(Organization $organization): array
+    {
+        $values = $this->planValues($organization);
+
+        return collect(PlanFeatures::FLAGS)
+            ->mapWithKeys(fn ($definition, $key) => [$key => ($values[$key] ?? null) === 'true'])
+            ->all();
+    }
+
+    /**
+     * Effective quotas (plan + add-ons); null means unlimited.
+     *
+     * @return array<string, int|null>
+     */
+    public function limits(Organization $organization): array
+    {
+        return collect(PlanFeatures::LIMITS)
+            ->mapWithKeys(fn ($definition, $key) => [$key => $this->limit($organization, $key)])
+            ->all();
+    }
+
+    /**
+     * Names of the active plans that include a feature, cheapest first — to
+     * tell a client which formula to move to.
+     *
+     * @return list<string>
+     */
+    public function plansIncluding(string $key): array
+    {
+        return Plan::query()
+            ->where('is_active', true)
+            ->whereHas('features', fn ($q) => $q->where('feature_key', $key)->where('feature_value', 'true'))
+            ->orderBy('monthly_price')
+            ->pluck('name')
+            ->all();
+    }
+
+    /**
+     * Refuses (403) a feature the organization's plan does not include, with a
+     * message naming the formulas that do.
+     */
+    public function assertFeature(Organization $organization, string $key): void
+    {
+        if ($this->hasFeature($organization, $key)) {
+            return;
+        }
+
+        $plans = $this->plansIncluding($key);
+
+        abort(response()->json([
+            'code' => 'feature_not_included',
+            'feature' => $key,
+            'message' => sprintf(
+                '« %s » n\'est pas inclus dans votre formule.%s',
+                PlanFeatures::label($key),
+                $plans ? ' Disponible avec : '.implode(', ', $plans).'.' : '',
+            ),
+            'plans' => $plans,
+        ], 403));
+    }
+
+    /** @return array<string, string> */
+    private function planValues(Organization $organization): array
+    {
+        $subscription = $this->currentSubscriptionFor($organization);
+        if (! $subscription) {
+            return [];
+        }
+
+        return PlanFeature::query()
+            ->where('plan_id', $subscription->plan_id)
+            ->pluck('feature_value', 'feature_key')
+            ->all();
     }
 
     public function assertWithinLimit(Organization $organization, string $key, int $currentCount, string $message): void

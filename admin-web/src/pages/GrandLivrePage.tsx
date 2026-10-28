@@ -8,6 +8,7 @@ import { DateRangeField } from '../components/DatePicker';
 import { IconCoin } from '../components/DashboardIcons';
 import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
+import { useSubscription } from '../context/SubscriptionContext';
 
 function soldeLabel(balance: number): string {
   if (Math.abs(balance) < 0.01) return formatMoney(0);
@@ -15,6 +16,7 @@ function soldeLabel(balance: number): string {
 }
 
 export function GrandLivrePage() {
+  const canExport = useSubscription().can('excel_export');
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
   const isAdmin = isSuperAdmin || user?.role?.slug === 'admin_boutique';
@@ -119,9 +121,11 @@ export function GrandLivrePage() {
             setToFilter(to);
           }}
         />
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={!ledger}>
-          ⬇️ Exporter CSV
-        </button>
+        {canExport && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={!ledger}>
+            ⬇️ Exporter CSV
+          </button>
+        )}
       </div>
 
       {ledger && (

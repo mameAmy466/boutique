@@ -11,12 +11,13 @@ const FEATURE_ORDER: string[] = [
   'max_users',
   'max_registers',
   'max_products',
+  'employees',
   'budget_enabled',
-  'multi_shop_dashboard',
-  'advanced_reports_enabled',
-  'risk_analysis_advanced',
+  'debts_enabled',
+  'purchase_orders',
   'excel_export',
-  'transfers_enabled',
+  'advanced_reports_enabled',
+  'multi_shop_dashboard',
 ];
 
 function quotaLabel(value: string, unit: string): string {
@@ -28,12 +29,13 @@ const FEATURE_LABEL: Record<string, (value: string) => string | null> = {
   max_users: (v) => quotaLabel(v, v === '1' ? 'utilisateur' : 'utilisateurs'),
   max_registers: (v) => quotaLabel(v, v === '1' ? 'caisse' : 'caisses'),
   max_products: (v) => quotaLabel(v, v === '1' ? 'article' : 'articles'),
+  employees: (v) => (v === 'true' ? 'Gestion des employés et des salaires' : null),
   budget_enabled: (v) => (v === 'true' ? 'Gestion des dépenses et budgets' : null),
-  multi_shop_dashboard: (v) => (v === 'true' ? 'Tableau de bord multi-boutiques' : null),
-  advanced_reports_enabled: (v) => (v === 'true' ? 'Rapports financiers détaillés' : null),
-  risk_analysis_advanced: (v) => (v === 'true' ? 'Détection avancée des risques de perte' : null),
-  excel_export: (v) => (v === 'true' ? 'Exports Excel/PDF' : null),
-  transfers_enabled: (v) => (v === 'true' ? 'Transferts entre boutiques' : null),
+  debts_enabled: (v) => (v === 'true' ? 'Dettes fournisseurs et créances clients' : null),
+  purchase_orders: (v) => (v === 'true' ? 'Bons de commande fournisseurs' : null),
+  excel_export: (v) => (v === 'true' ? 'Export des rapports (Excel / CSV)' : null),
+  advanced_reports_enabled: (v) => (v === 'true' ? 'Comptabilité et rapports financiers avancés' : null),
+  multi_shop_dashboard: (v) => (v === 'true' ? 'Gestion multi-boutiques' : null),
 };
 
 export function planFeatureBullets(plan: PublicPlan): string[] {

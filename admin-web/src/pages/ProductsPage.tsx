@@ -8,6 +8,7 @@ import { Pager } from '../components/Pager';
 import { exportToCsv } from '../lib/csv';
 import { mediaUrl } from '../lib/format';
 import { IconBox, IconCamera } from '../components/DashboardIcons';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const PAGE_SIZE = 12;
 
@@ -25,6 +26,7 @@ function emptyForm() {
 }
 
 export function ProductsPage() {
+  const canExport = useSubscription().can('excel_export');
   const { user } = useAuth();
   const canManage = user?.role?.slug === 'super_admin' || user?.role?.slug === 'admin_boutique';
 
@@ -254,9 +256,11 @@ export function ProductsPage() {
                 <option value="active">Actif</option>
                 <option value="inactive">Inactif</option>
               </select>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
-                ⬇️ CSV
-              </button>
+              {canExport && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
+                  ⬇️ CSV
+                </button>
+              )}
             </div>
 
             <div className="table-wrap table-scroll cards-sm">

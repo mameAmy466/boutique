@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\Shop;
+use App\Models\User;
 use App\Services\AccountingEntryService;
 use App\Services\SubscriptionService;
 use App\Support\TenantRule;
@@ -58,7 +59,11 @@ class ExpenseController extends Controller
         $data = $request->validate([
             'shop_id' => ['required', TenantRule::exists('shops')],
             'category' => ['required', Rule::in(Expense::CATEGORIES)],
-            'employee_id' => ['nullable', TenantRule::exists('employees'), Rule::requiredIf($request->input('category') === 'salaires')],
+            'employee_id' => [
+                'nullable',
+                TenantRule::exists('employees'),
+                Rule::requiredIf($request->input('category') === 'salaires' && $this->tracksEmployees($actor)),
+            ],
             'label' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method' => ['nullable', Rule::in(Sale::PAYMENT_METHODS)],
@@ -70,15 +75,11 @@ class ExpenseController extends Controller
             abort(403, 'Vous ne pouvez enregistrer une dépense que pour votre propre boutique.');
         }
 
-        $this->assertEmployeeLinkIsValid($data);
+        $this->assertEmployeeLinkIsValid($data, $this->tracksEmployees($actor));
 
+        // Access to expenses itself (budget_enabled) is checked by the
+        // feature middleware on the route.
         $shop = Shop::findOrFail($data['shop_id']);
-
-        $this->subscriptions->assertHasFeature(
-            $shop->organization,
-            'budget_enabled',
-            'La gestion des dépenses nécessite le forfait Pro ou supérieur.',
-        );
 
         if ($shop->isDateLocked($data['expense_date'])) {
             abort(422, sprintf('Période comptable clôturée jusqu\'au %s.', $shop->closed_until->toDateString()));
@@ -109,7 +110,7 @@ class ExpenseController extends Controller
             'shop_id' => $expense->shop_id,
             'category' => $data['category'] ?? $expense->category,
             'employee_id' => array_key_exists('employee_id', $data) ? $data['employee_id'] : $expense->employee_id,
-        ]);
+        ], $this->tracksEmployees($request->user()));
 
         $shop = $expense->shop;
         $newDate = $data['expense_date'] ?? $expense->expense_date->toDateString();
@@ -142,12 +143,15 @@ class ExpenseController extends Controller
      * (already merged with the existing record on update), so it also
      * catches a category change away from "salaires" that would otherwise
      * strand a stale employee_id, or one into it without an employee.
+     *
+     * A plan without employee management still records salaries, just
+     * without naming the employee.
      */
-    private function assertEmployeeLinkIsValid(array $data): void
+    private function assertEmployeeLinkIsValid(array $data, bool $requiresEmployee = true): void
     {
         $isSalaryCategory = ($data['category'] ?? null) === 'salaires';
 
-        if ($isSalaryCategory && empty($data['employee_id'])) {
+        if ($isSalaryCategory && $requiresEmployee && empty($data['employee_id'])) {
             abort(422, 'Indique l\'employé concerné par ce paiement de salaire.');
         }
 
@@ -163,5 +167,12 @@ class ExpenseController extends Controller
         if (! $employee || $employee->shop_id !== (int) $data['shop_id']) {
             abort(422, "Cet employé n'appartient pas à cette boutique.");
         }
+    }
+
+    private function tracksEmployees(User $actor): bool
+    {
+        $organization = $actor->organization;
+
+        return ! $organization || $this->subscriptions->hasFeature($organization, 'employees');
     }
 }

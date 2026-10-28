@@ -10,6 +10,7 @@ import { IconReceipt } from '../components/DashboardIcons';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABEL } from '../lib/expenseCategories';
 import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
+import { useSubscription } from '../context/SubscriptionContext';
 
 function emptyForm(shopId: string) {
   return {
@@ -24,6 +25,10 @@ function emptyForm(shopId: string) {
 }
 
 export function ExpensesPage() {
+  const { can } = useSubscription();
+  const canExport = can('excel_export');
+  // Without employee management a salary is recorded without naming the employee.
+  const tracksEmployees = can('employees');
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
   const isAdmin = isSuperAdmin || user?.role?.slug === 'admin_boutique';
@@ -74,13 +79,13 @@ export function ExpensesPage() {
 
   useEffect(() => {
     const shopId = showCreate ? form.shop_id : editExpense ? editForm.shop_id : '';
-    if (!shopId) {
+    if (!shopId || !tracksEmployees) {
       setEmployees([]);
       return;
     }
     api.get<Employee[]>(`/employees?shop_id=${shopId}&status=active`).then(setEmployees);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showCreate, form.shop_id, editExpense, editForm.shop_id]);
+  }, [showCreate, form.shop_id, editExpense, editForm.shop_id, tracksEmployees]);
 
   const total = useMemo(() => expenses.reduce((sum, e) => sum + Number(e.amount), 0), [expenses]);
   const byCategory = useMemo(() => {
@@ -242,9 +247,11 @@ export function ExpensesPage() {
             setToFilter(to);
           }}
         />
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={expenses.length === 0}>
-          ⬇️ Exporter CSV
-        </button>
+        {canExport && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={expenses.length === 0}>
+            ⬇️ Exporter CSV
+          </button>
+        )}
       </div>
 
       <div className="table-wrap table-scroll cards-sm">
@@ -337,7 +344,7 @@ export function ExpensesPage() {
                   ))}
                 </select>
               </div>
-              {form.category === 'salaires' && (
+              {form.category === 'salaires' && tracksEmployees && (
                 <div className="field">
                   <label htmlFor="exp-employee">Employé</label>
                   <select
@@ -418,7 +425,7 @@ export function ExpensesPage() {
                   ))}
                 </select>
               </div>
-              {editForm.category === 'salaires' && (
+              {editForm.category === 'salaires' && tracksEmployees && (
                 <div className="field">
                   <label htmlFor="eexp-employee">Employé</label>
                   <select

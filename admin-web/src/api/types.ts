@@ -289,6 +289,7 @@ export interface DashboardFigures {
 
 export interface ApiErrorBody {
   message: string;
+  code?: string;
   errors?: Record<string, string[]>;
   min_price?: number;
   attempted_price?: number;
@@ -672,6 +673,10 @@ export interface MySubscription {
   } | null;
   access: AccessDenial | null;
   is_platform_admin: boolean;
+  features: Partial<Record<FeatureKey, boolean>>;
+  limits: Record<string, number | null>;
+  usage: Record<string, number>;
+  feature_labels: Record<string, string>;
   payments: SubscriptionPaymentRow[];
   plans: { code: PlanCode; name: string; monthly_price: string | number; annual_price: string | number }[];
 }
@@ -743,7 +748,18 @@ export interface PlatformPlan {
   features: Record<string, string>;
 }
 
-export interface FeatureDefinition {
-  label: string;
-  type: 'limit' | 'flag';
+export type FeatureKey =
+  | 'employees'
+  | 'budget_enabled'
+  | 'debts_enabled'
+  | 'purchase_orders'
+  | 'advanced_reports_enabled'
+  | 'excel_export'
+  | 'multi_shop_dashboard';
+
+export interface PlansMatrix {
+  plans: PlatformPlan[];
+  core: string[];
+  flags: Record<string, { label: string; description: string }>;
+  limits: Record<string, { label: string }>;
 }

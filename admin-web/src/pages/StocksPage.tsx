@@ -9,6 +9,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { Pager } from '../components/Pager';
 import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney, mediaUrl } from '../lib/format';
+import { useSubscription } from '../context/SubscriptionContext';
 import {
   IconBox,
   IconBarcode,
@@ -42,6 +43,7 @@ function emptyEditForm(batch: ProductBatch) {
 }
 
 export function StocksPage() {
+  const canExport = useSubscription().can('excel_export');
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
   const canReceive = user?.role?.slug === 'super_admin' || user?.role?.slug === 'admin_boutique';
@@ -364,9 +366,11 @@ export function StocksPage() {
                 <option value="rupture">En rupture</option>
                 <option value="faible">Stock faible</option>
               </select>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
-                ⬇️ CSV
-              </button>
+              {canExport && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={filtered.length === 0}>
+                  ⬇️ CSV
+                </button>
+              )}
             </div>
 
             <div className="table-wrap table-scroll cards-sm">

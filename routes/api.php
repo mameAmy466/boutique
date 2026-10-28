@@ -87,9 +87,12 @@ Route::middleware(['auth:sanctum', 'organization.access'])->group(function () {
     Route::post('/stocks/{batch}/shrinkage', [StockController::class, 'shrinkage']);
     Route::get('/stocks/movements', [StockController::class, 'movements']);
 
-    Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
-    Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive']);
-    Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel']);
+    // Modules included or not depending on the plan (App\Support\PlanFeatures).
+    Route::middleware('feature:purchase_orders')->group(function () {
+        Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
+        Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive']);
+        Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel']);
+    });
 
     Route::get('/cash-registers', [CashRegisterController::class, 'index']);
     Route::post('/cash-registers', [CashRegisterController::class, 'store']);
@@ -106,34 +109,46 @@ Route::middleware(['auth:sanctum', 'organization.access'])->group(function () {
     Route::get('/dashboard/general', [DashboardController::class, 'general']);
     Route::get('/dashboard/shop/{shop}', [DashboardController::class, 'shop']);
 
-    Route::apiResource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
+    // Dépenses et budget
+    Route::middleware('feature:budget_enabled')->group(function () {
+        Route::apiResource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
+    });
 
-    Route::apiResource('employees', EmployeeController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+    // Gestion des employés
+    Route::middleware('feature:employees')->group(function () {
+        Route::apiResource('employees', EmployeeController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+    });
 
     Route::apiResource('customers', CustomerController::class)->only(['index', 'show', 'store', 'update']);
 
-    Route::apiResource('supplier-debts', SupplierDebtController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::post('/supplier-debts/{supplierDebt}/payments', [SupplierDebtController::class, 'addPayment']);
+    // Dettes fournisseurs et créances clients
+    Route::middleware('feature:debts_enabled')->group(function () {
+        Route::apiResource('supplier-debts', SupplierDebtController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('/supplier-debts/{supplierDebt}/payments', [SupplierDebtController::class, 'addPayment']);
 
-    Route::apiResource('client-debts', ClientDebtController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::post('/client-debts/{clientDebt}/payments', [ClientDebtController::class, 'addPayment']);
+        Route::apiResource('client-debts', ClientDebtController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('/client-debts/{clientDebt}/payments', [ClientDebtController::class, 'addPayment']);
+    });
 
-    Route::get('/accounting/cashflow', [AccountingController::class, 'cashflow']);
-    Route::get('/accounting/balance', [AccountingController::class, 'trialBalance']);
-    Route::get('/accounting/ledger/{account}', [AccountingController::class, 'ledger']);
-    Route::get('/accounting/income-statement', [AccountingController::class, 'incomeStatement']);
-    Route::get('/accounting/balance-sheet', [AccountingController::class, 'balanceSheet']);
-    Route::get('/accounting/integrity-check', [AccountingController::class, 'integrityCheck']);
+    // Comptabilité et rapports financiers avancés
+    Route::middleware('feature:advanced_reports_enabled')->group(function () {
+        Route::get('/accounting/cashflow', [AccountingController::class, 'cashflow']);
+        Route::get('/accounting/balance', [AccountingController::class, 'trialBalance']);
+        Route::get('/accounting/ledger/{account}', [AccountingController::class, 'ledger']);
+        Route::get('/accounting/income-statement', [AccountingController::class, 'incomeStatement']);
+        Route::get('/accounting/balance-sheet', [AccountingController::class, 'balanceSheet']);
+        Route::get('/accounting/integrity-check', [AccountingController::class, 'integrityCheck']);
 
-    Route::get('/bank-statement-lines/unmatched-entries', [BankStatementLineController::class, 'unmatchedEntries']);
-    Route::post('/bank-statement-lines/import', [BankStatementLineController::class, 'import']);
-    Route::post('/bank-statement-lines/{bankStatementLine}/match', [BankStatementLineController::class, 'match']);
-    Route::post('/bank-statement-lines/{bankStatementLine}/unmatch', [BankStatementLineController::class, 'unmatch']);
-    Route::apiResource('bank-statement-lines', BankStatementLineController::class)->only(['index', 'store', 'destroy']);
+        Route::get('/bank-statement-lines/unmatched-entries', [BankStatementLineController::class, 'unmatchedEntries']);
+        Route::post('/bank-statement-lines/import', [BankStatementLineController::class, 'import']);
+        Route::post('/bank-statement-lines/{bankStatementLine}/match', [BankStatementLineController::class, 'match']);
+        Route::post('/bank-statement-lines/{bankStatementLine}/unmatch', [BankStatementLineController::class, 'unmatch']);
+        Route::apiResource('bank-statement-lines', BankStatementLineController::class)->only(['index', 'store', 'destroy']);
 
-    Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::apiResource('accounting-journals', AccountingJournalController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::get('/accounting-rules/coverage', [AccountingRuleController::class, 'coverage']);
-    Route::apiResource('accounting-rules', AccountingRuleController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::get('/journal-entries', [JournalEntryController::class, 'index']);
+        Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::apiResource('accounting-journals', AccountingJournalController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::get('/accounting-rules/coverage', [AccountingRuleController::class, 'coverage']);
+        Route::apiResource('accounting-rules', AccountingRuleController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::get('/journal-entries', [JournalEntryController::class, 'index']);
+    });
 });

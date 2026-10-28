@@ -8,6 +8,7 @@ import { DateRangeField } from '../components/DatePicker';
 import { IconAudit } from '../components/DashboardIcons';
 import { exportToCsv } from '../lib/csv';
 import { formatDate, formatMoney } from '../lib/format';
+import { useSubscription } from '../context/SubscriptionContext';
 
 interface FlatLine {
   entryId: number;
@@ -42,6 +43,7 @@ function flatten(entries: JournalEntry[]): FlatLine[] {
 }
 
 export function JournalEntriesPage() {
+  const canExport = useSubscription().can('excel_export');
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.slug === 'super_admin';
   const isAdmin = isSuperAdmin || user?.role?.slug === 'admin_boutique';
@@ -160,9 +162,11 @@ export function JournalEntriesPage() {
             setToFilter(to);
           }}
         />
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={rows.length === 0}>
-          ⬇️ Exporter CSV
-        </button>
+        {canExport && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleExport} disabled={rows.length === 0}>
+            ⬇️ Exporter CSV
+          </button>
+        )}
       </div>
 
       <div className="catalog-stats" style={{ marginBottom: 16 }}>

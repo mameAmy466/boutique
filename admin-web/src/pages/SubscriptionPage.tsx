@@ -121,6 +121,33 @@ export function SubscriptionPage() {
         </section>
 
         <section className="card">
+          <h2>Ce que comprend votre formule</h2>
+          {data && (
+            <>
+              <div className="catalog-totals">
+                {Object.entries(data.limits).map(([key, limit]) => (
+                  <div key={key}>
+                    <span>{data.feature_labels[key] ?? key}</span>
+                    <span className="num">
+                      {data.usage[key] ?? 0} / {limit === null ? 'illimité' : limit}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <ul className="feature-list">
+                {Object.entries(data.features).map(([key, included]) => (
+                  <li key={key} className={included ? 'is-included' : 'is-excluded'}>
+                    <span aria-hidden="true">{included ? '✓' : '—'}</span>
+                    {data.feature_labels[key] ?? key}
+                    {!included && <span className="hint"> · non inclus</span>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
+        <section className="card">
           <h2>Historique des paiements</h2>
           <div className="table-wrap table-scroll cards-sm">
             <table>

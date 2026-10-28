@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashRegister;
 use App\Models\Plan;
+use App\Models\Product;
+use App\Models\Shop;
+use App\Models\User;
 use App\Services\SubscriptionService;
+use App\Support\PlanFeatures;
 use Illuminate\Http\Request;
 
 /**
@@ -45,6 +50,18 @@ class SubscriptionController extends Controller
                 'grace_days' => $subscription->grace_days,
             ] : null,
             'access' => $this->subscriptions->accessDenial($organization),
+            // What the interface may show: menus and pages are built from
+            // these, and the API checks the same keys (feature: middleware).
+            'features' => $this->subscriptions->features($organization),
+            'limits' => $this->subscriptions->limits($organization),
+            'usage' => [
+                'max_shops' => Shop::count(),
+                'max_users' => User::where('organization_id', $organization->id)->count(),
+                'max_registers' => CashRegister::count(),
+                'max_products' => Product::count(),
+            ],
+            'feature_labels' => collect(PlanFeatures::FLAGS)->map(fn ($f) => $f['label'])
+                ->merge(collect(PlanFeatures::LIMITS)->map(fn ($l) => $l['label'])),
             'is_platform_admin' => $request->user()->isPlatformAdmin(),
             'payments' => $organization->payments()->latest('paid_at')->limit(12)
                 ->get(['id', 'amount', 'method', 'reference', 'months', 'paid_at', 'period_start', 'period_end']),

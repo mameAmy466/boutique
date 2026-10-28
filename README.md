@@ -95,6 +95,15 @@ utilisateurs, produits, ventes, stock et plan comptable lui appartiennent.
 - **Échéances** : `php artisan subscriptions:check` (planifié chaque nuit)
   passe un essai ou une période terminée en `past_due`, puis en `expired`
   après le délai de grâce (`grace_days`, 7 jours par défaut).
+- **Fonctionnalités par formule** : `App\Support\PlanFeatures` liste les
+  modules activables (employés, dépenses, dettes, bons de commande,
+  comptabilité et rapports avancés, export, multi-boutiques) et les limites
+  (boutiques, utilisateurs, caisses, produits). Les valeurs de chaque formule
+  sont dans `plan_features`, modifiables depuis le Super Admin. L'API refuse
+  un module non inclus (middleware `feature:<clé>`, réponse 403
+  `feature_not_included`) ; `/api/subscription` renvoie `features`, `limits`
+  et `usage`, à partir desquels l'interface construit ses menus
+  (`admin-web/src/lib/features.ts`).
 - **Super Admin** : les comptes `is_platform_admin` (et eux seuls) accèdent à
   `/api/platform/*` et aux pages « Super Admin » de l'interface : clients,
   suspension/réactivation, abonnements, paiements, formules et historique.

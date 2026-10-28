@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { api, ACCESS_DENIED_EVENT } from '../api/client';
+import { api, ACCESS_DENIED_EVENT, FEATURE_DENIED_EVENT } from '../api/client';
 import type { AccessDenial, MySubscription } from '../api/types';
 import { Logo } from './Logo';
 import { AccessBlocked } from './AccessBlocked';
 import { SubscriptionNotice } from './SubscriptionNotice';
+import { FeatureLocked } from './FeatureLocked';
+import { SubscriptionContext, makeCan } from '../context/SubscriptionContext';
+import { featureForPath } from '../lib/features';
 import { TopBar } from './TopBar';
 import { NavGroup, type NavGroupItem } from './NavGroup';
 import {
@@ -36,6 +39,7 @@ export function ProtectedLayout() {
   const isDashboard = location.pathname === '/';
   const [menuOpen, setMenuOpen] = useState(false);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const [denial, setDenial] = useState<AccessDenial | null>(null);
 
   useEffect(() => {
@@ -49,11 +53,26 @@ export function ProtectedLayout() {
         setSubscription(data);
         setDenial(data.is_platform_admin ? null : data.access);
       })
-      .catch(() => setSubscription(null));
+      .catch(() => setSubscription(null))
+      .finally(() => setSubscriptionLoaded(true));
   }
 
   useEffect(() => {
     if (user) loadSubscription();
+  }, [user?.id]);
+
+  // Rights change when the client renews or switches plan, or when the
+  // Super Admin edits a formula: pick that up whenever the tab comes back.
+  useEffect(() => {
+    const onFocus = () => {
+      if (user) loadSubscription();
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener(FEATURE_DENIED_EVENT, onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener(FEATURE_DENIED_EVENT, onFocus);
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -99,6 +118,12 @@ export function ProtectedLayout() {
   const isAdmin = user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique';
   const isSuperAdmin = user.role?.slug === 'super_admin';
   const isPlatformAdmin = Boolean(user.is_platform_admin);
+  const can = makeCan(subscription, subscriptionLoaded);
+  const allowed = (item: NavGroupItem) => {
+    const feature = featureForPath(item.to);
+    return !feature || can(feature);
+  };
+  const lockedFeature = featureForPath(location.pathname);
   const firstName = user.name.trim().split(/\s+/)[0] ?? '';
 
   const stockProduits: NavGroupItem[] = [
@@ -123,7 +148,7 @@ export function ProtectedLayout() {
     { to: '/plateforme/historique', label: 'Historique', icon: <IconAudit /> },
   ];
 
-  const accountingItems: NavGroupItem[] = [
+  const accountingItems: NavGroupItem[] = ([
     { to: '/expenses', label: 'Dépenses', icon: <IconReceipt /> },
     { to: '/cashflow', label: 'Trésorerie', icon: <IconBank /> },
     { to: '/supplier-debts', label: 'Dettes fournisseurs', icon: <IconTruck /> },
@@ -141,9 +166,19 @@ export function ProtectedLayout() {
           { to: '/controle-comptable', label: 'Contrôle comptable', icon: <IconAudit /> },
         ]
       : []),
-  ];
+  ] as NavGroupItem[]).filter(allowed);
+
+  const partnerItems: NavGroupItem[] = [
+    { to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> },
+    { to: '/employees', label: 'Employés', icon: <IconUsers /> },
+  ].filter(allowed);
+
+  const purchasingItems: NavGroupItem[] = [
+    { to: '/purchase-orders', label: 'Bons de commande', icon: <IconSend /> },
+  ].filter(allowed);
 
   return (
+    <SubscriptionContext.Provider value={{ data: subscription, can, refresh: loadSubscription }}>
     <div className={`app-shell${menuOpen ? ' nav-open' : ''}`}>
       <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
       <aside className="sidebar" id="app-nav">
@@ -182,26 +217,15 @@ export function ProtectedLayout() {
 
           <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />
 
-          <NavGroup
-            id="partners"
-            label="Tiers"
-            icon={<IconTruck />}
-            items={[
-              { to: '/suppliers', label: 'Fournisseurs', icon: <IconTruck /> },
-              { to: '/employees', label: 'Employés', icon: <IconUsers /> },
-            ]}
-          />
+          <NavGroup id="partners" label="Tiers" icon={<IconTruck />} items={partnerItems} />
 
-          {isAdmin && (
-            <NavGroup
-              id="purchasing"
-              label="Achats"
-              icon={<IconSend />}
-              items={[{ to: '/purchase-orders', label: 'Bons de commande', icon: <IconSend /> }]}
-            />
+          {isAdmin && purchasingItems.length > 0 && (
+            <NavGroup id="purchasing" label="Achats" icon={<IconSend />} items={purchasingItems} />
           )}
 
-          {isAdmin && <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />}
+          {isAdmin && accountingItems.length > 0 && (
+            <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />
+          )}
 
           <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
         </nav>
@@ -238,6 +262,10 @@ export function ProtectedLayout() {
                 loadSubscription();
               }}
             />
+          ) : lockedFeature && subscriptionLoaded && !can(lockedFeature) ? (
+            <FeatureLocked feature={lockedFeature} data={subscription} />
+          ) : lockedFeature && !subscriptionLoaded ? (
+            <div className="spinner-line">Chargement…</div>
           ) : (
             <>
               <SubscriptionNotice data={subscription} />
@@ -247,5 +275,6 @@ export function ProtectedLayout() {
         </div>
       </div>
     </div>
+    </SubscriptionContext.Provider>
   );
 }

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Plan;
+use App\Support\PlanFeatures;
 use Illuminate\Database\Seeder;
 
 /**
@@ -45,7 +46,7 @@ class PlanSeeder extends Seeder
                 'max_products' => '5000',
                 'budget_enabled' => 'true',
                 'multi_shop_dashboard' => 'false',
-                'advanced_reports_enabled' => 'true',
+                'advanced_reports_enabled' => 'false',
                 'risk_analysis_advanced' => 'true',
                 'excel_export' => 'true',
                 'transfers_enabled' => 'false',
@@ -78,6 +79,13 @@ class PlanSeeder extends Seeder
             unset($planData['features']);
 
             $plan = Plan::firstOrCreate(['code' => $planData['code']], $planData);
+
+            // Module switches added later (employees, debts...) take their
+            // registry default.
+            $index = array_search($planData['code'], [Plan::CODE_SIMPLE, Plan::CODE_PRO, Plan::CODE_PRO_MAX], true);
+            foreach (PlanFeatures::FLAGS as $key => $definition) {
+                $features[$key] ??= $definition['defaults'][$index] ? 'true' : 'false';
+            }
 
             foreach ($features as $key => $value) {
                 $plan->features()->firstOrCreate(['feature_key' => $key], ['feature_value' => $value]);

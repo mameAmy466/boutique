@@ -5,26 +5,14 @@ namespace App\Http\Controllers\Api\Platform;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\PlatformAuditLog;
+use App\Support\PlanFeatures;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /** Prices and features of the Simple / Pro / Pro Max formulas, editable without a deploy. */
 class PlatformPlanController extends Controller
 {
-    /** Labels of the known feature keys, so the interface can show them in French. */
-    public const FEATURES = [
-        'max_shops' => ['label' => 'Boutiques', 'type' => 'limit'],
-        'max_users' => ['label' => 'Utilisateurs', 'type' => 'limit'],
-        'max_registers' => ['label' => 'Caisses', 'type' => 'limit'],
-        'max_products' => ['label' => 'Produits', 'type' => 'limit'],
-        'budget_enabled' => ['label' => 'Budget et dépenses par catégorie', 'type' => 'flag'],
-        'multi_shop_dashboard' => ['label' => 'Tableau de bord multi-boutiques', 'type' => 'flag'],
-        'advanced_reports_enabled' => ['label' => 'Rapports avancés', 'type' => 'flag'],
-        'risk_analysis_advanced' => ['label' => 'Analyse de risque avancée', 'type' => 'flag'],
-        'excel_export' => ['label' => 'Export Excel', 'type' => 'flag'],
-        'transfers_enabled' => ['label' => 'Transferts entre boutiques', 'type' => 'flag'],
-    ];
-
     public function index()
     {
         $plans = Plan::query()->with('features')->withCount('subscriptions')->orderBy('monthly_price')->get()
@@ -35,7 +23,12 @@ class PlatformPlanController extends Controller
                 'features' => $plan->features->mapWithKeys(fn ($f) => [$f->feature_key => $f->feature_value]),
             ]);
 
-        return response()->json(['plans' => $plans, 'feature_definitions' => self::FEATURES]);
+        return response()->json([
+            'plans' => $plans,
+            'core' => PlanFeatures::CORE,
+            'flags' => collect(PlanFeatures::FLAGS)->map(fn ($f) => ['label' => $f['label'], 'description' => $f['description']]),
+            'limits' => PlanFeatures::LIMITS,
+        ]);
     }
 
     public function update(Request $request, Plan $plan)
@@ -46,16 +39,28 @@ class PlatformPlanController extends Controller
             'annual_price' => ['sometimes', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
             'features' => ['sometimes', 'array'],
-            'features.*' => ['nullable', 'string', 'max:50', 'regex:/^(\d+|unlimited|true|false)$/'],
-        ], [
-            'features.*.regex' => 'Valeur attendue : un nombre, « unlimited », « true » ou « false ».',
+            'features.*' => ['nullable', 'string', 'max:50'],
         ]);
+
+        foreach ($data['features'] ?? [] as $key => $value) {
+            $valid = PlanFeatures::isFlag($key)
+                ? in_array($value, ['true', 'false'], true)
+                : array_key_exists($key, PlanFeatures::LIMITS) && preg_match('/^(\d+|unlimited)$/', (string) $value);
+
+            if (! $valid) {
+                throw ValidationException::withMessages([
+                    "features.{$key}" => [PlanFeatures::isFlag($key) || array_key_exists($key, PlanFeatures::LIMITS)
+                        ? 'Valeur attendue : un nombre, « unlimited », « true » ou « false ».'
+                        : "Fonctionnalité inconnue : {$key}."],
+                ]);
+            }
+        }
 
         DB::transaction(function () use ($plan, $data) {
             $plan->update(collect($data)->except('features')->all());
 
             foreach ($data['features'] ?? [] as $key => $value) {
-                $plan->features()->updateOrCreate(['feature_key' => $key], ['feature_value' => $value ?? 'false']);
+                $plan->features()->updateOrCreate(['feature_key' => $key], ['feature_value' => $value]);
             }
         });
 
