@@ -4335,40 +4335,6 @@ tr.is-clickable {
 .feature-list li.is-excluded {
   color: var(--ink-soft);
 }
-.plans-matrix th,
-.plans-matrix td {
-  vertical-align: middle;
-}
-.plans-matrix td.plan-cell {
-  text-align: center;
-  min-width: 150px;
-}
-.plans-matrix tr.matrix-section td {
-  background: var(--surface-2);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.plans-matrix input[type='number'],
-.plans-matrix input[type='text'] {
-  width: 100%;
-  min-width: 90px;
-}
-.plans-matrix input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
-}
-.plans-matrix .feature-desc {
-  display: block;
-  font-size: 12px;
-  color: var(--ink-soft);
-  margin-top: 2px;
-}
-.plans-matrix .plan-limit {
-  justify-content: center;
-}
 .matrix-actions {
   display: flex;
   justify-content: flex-end;
@@ -4477,5 +4443,227 @@ tr.is-clickable {
   color: color-mix(in srgb, #fff 75%, transparent);
 }
 .login-form-card .pricing-footnote a {
+  color: #fff;
+}
+
+/* ---- Formules et fonctionnalités (matrice) ---- */
+.plans-matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.plans-matrix th,
+.plans-matrix td {
+  vertical-align: middle;
+  border: none;
+  padding: 12px 14px;
+}
+.plans-matrix tbody tr:not(.matrix-section):hover td {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.plans-matrix td:first-child {
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 340px;
+}
+.plans-matrix td.plan-cell,
+.plans-matrix th.plan-cell {
+  text-align: center;
+  min-width: 170px;
+}
+.plans-matrix tbody td.plan-cell:nth-child(odd) {
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+}
+.plans-matrix tr.matrix-section td {
+  background: transparent !important;
+  padding-top: 26px;
+  padding-bottom: 8px;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.plans-matrix .feature-desc {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* Plan header cards */
+.plan-head {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 16px 12px 14px;
+  border-radius: 18px;
+  background: var(--surface-2);
+  position: relative;
+  overflow: hidden;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.plan-head::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--plan-color, var(--accent));
+}
+.plan-head-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.plan-head-price {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.plan-head-price strong {
+  font-size: 18px;
+  color: var(--ink);
+}
+.plan-head-clients {
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--plan-color, var(--accent)) 14%, transparent);
+  color: var(--plan-color, var(--accent));
+}
+.plan-tone-0 { --plan-color: #4f7cac; }
+.plan-tone-1 { --plan-color: var(--accent); }
+.plan-tone-2 { --plan-color: #b0702a; }
+
+/* Borderless fields */
+.plans-matrix input[type='number'],
+.plans-matrix input[type='text'] {
+  width: 100%;
+  min-width: 90px;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: none;
+  border-radius: 12px;
+  padding: 9px 12px;
+  outline: none;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+  -moz-appearance: textfield;
+}
+.plans-matrix input[type='number']::-webkit-outer-spin-button,
+.plans-matrix input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.plans-matrix input[type='number']:hover,
+.plans-matrix input[type='text']:hover {
+  background: color-mix(in srgb, var(--surface-2) 70%, var(--accent-soft));
+}
+.plans-matrix input[type='number']:focus,
+.plans-matrix input[type='text']:focus {
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.plans-matrix input:disabled {
+  opacity: 0.55;
+}
+.price-field {
+  position: relative;
+}
+.price-field input {
+  padding-right: 52px !important;
+}
+.price-field span {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+/* Switches instead of checkboxes */
+.plans-matrix .switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-soft) 30%, transparent);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.18s ease;
+  vertical-align: middle;
+}
+.plans-matrix .switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s ease;
+}
+.plans-matrix .switch:checked {
+  background: var(--accent);
+}
+.plans-matrix .switch:checked::after {
+  transform: translateX(18px);
+}
+.plans-matrix .switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.plans-matrix .switch:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.included-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+/* Limits: number + "Illimité" pill */
+.plans-matrix .plan-limit {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.unlimited-pill {
+  flex: none;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.unlimited-pill.is-on {
+  background: var(--accent);
   color: #fff;
 }

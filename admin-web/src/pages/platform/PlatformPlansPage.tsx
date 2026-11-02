@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError, firstValidationError } from '../../api/client';
 import type { PlansMatrix, PlatformPlan } from '../../api/types';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { formatMoney } from '../../lib/format';
 
 /**
  * Prices, limits and features of every formula, side by side. A change
@@ -92,13 +93,18 @@ export function PlatformPlansPage() {
             <table className="plans-matrix">
               <thead>
                 <tr>
-                  <th>Formule</th>
-                  {drafts.map((plan) => (
+                  <th aria-label="Réglage" />
+                  {drafts.map((plan, index) => (
                     <th key={plan.id} className="plan-cell">
-                      {plan.name}
-                      <span className="feature-desc">
-                        {plan.subscriptions_count} client{plan.subscriptions_count > 1 ? 's' : ''}
-                      </span>
+                      <div className={`plan-head plan-tone-${index % 3}`}>
+                        <span className="plan-head-name">{plan.name || '—'}</span>
+                        <span className="plan-head-price">
+                          <strong>{formatMoney(plan.monthly_price)}</strong> / mois
+                        </span>
+                        <span className="plan-head-clients">
+                          {plan.subscriptions_count} client{plan.subscriptions_count > 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -116,30 +122,36 @@ export function PlatformPlansPage() {
                   ))}
                 </tr>
                 <tr>
-                  <td>Prix mensuel (FCFA)</td>
+                  <td>Prix mensuel</td>
                   {drafts.map((plan) => (
                     <td key={plan.id} className="plan-cell">
-                      <input
-                        type="number"
-                        min={0}
-                        aria-label={`Prix mensuel ${plan.name}`}
-                        value={plan.monthly_price}
-                        onChange={(e) => update(plan.id, { monthly_price: Number(e.target.value) })}
-                      />
+                      <div className="price-field">
+                        <input
+                          type="number"
+                          min={0}
+                          aria-label={`Prix mensuel ${plan.name}`}
+                          value={plan.monthly_price}
+                          onChange={(e) => update(plan.id, { monthly_price: Number(e.target.value) })}
+                        />
+                        <span>FCFA</span>
+                      </div>
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td>Prix annuel (FCFA)</td>
+                  <td>Prix annuel</td>
                   {drafts.map((plan) => (
                     <td key={plan.id} className="plan-cell">
-                      <input
-                        type="number"
-                        min={0}
-                        aria-label={`Prix annuel ${plan.name}`}
-                        value={plan.annual_price}
-                        onChange={(e) => update(plan.id, { annual_price: Number(e.target.value) })}
-                      />
+                      <div className="price-field">
+                        <input
+                          type="number"
+                          min={0}
+                          aria-label={`Prix annuel ${plan.name}`}
+                          value={plan.annual_price}
+                          onChange={(e) => update(plan.id, { annual_price: Number(e.target.value) })}
+                        />
+                        <span>FCFA</span>
+                      </div>
                     </td>
                   ))}
                 </tr>
@@ -149,6 +161,7 @@ export function PlatformPlansPage() {
                     <td key={plan.id} className="plan-cell">
                       <input
                         type="checkbox"
+                        className="switch"
                         aria-label={`${plan.name} proposée à l'inscription`}
                         checked={plan.is_active}
                         onChange={(e) => update(plan.id, { is_active: e.target.checked })}
@@ -165,7 +178,9 @@ export function PlatformPlansPage() {
                     <td>{label}</td>
                     {drafts.map((plan) => (
                       <td key={plan.id} className="plan-cell">
-                        <input type="checkbox" checked disabled aria-label={`${label} — ${plan.name}`} />
+                        <span className="included-mark" aria-label={`${label} — ${plan.name} : inclus`}>
+                          ✓
+                        </span>
                       </td>
                     ))}
                   </tr>
@@ -184,6 +199,7 @@ export function PlatformPlansPage() {
                       <td key={plan.id} className="plan-cell">
                         <input
                           type="checkbox"
+                          className="switch"
                           aria-label={`${flag.label} — ${plan.name}`}
                           checked={plan.features[key] === 'true'}
                           onChange={(e) => setFeature(plan.id, key, e.target.checked ? 'true' : 'false')}
@@ -198,7 +214,7 @@ export function PlatformPlansPage() {
                 </tr>
                 {Object.entries(matrix.limits).map(([key, limit]) => (
                   <tr key={key}>
-                    <td>{limit.label} (maximum)</td>
+                    <td>{limit.label}<span className="feature-desc">Nombre maximum</span></td>
                     {drafts.map((plan) => {
                       const value = plan.features[key] ?? '0';
                       const unlimited = value === 'unlimited';
@@ -214,14 +230,14 @@ export function PlatformPlansPage() {
                               placeholder={unlimited ? '∞' : ''}
                               onChange={(e) => setFeature(plan.id, key, e.target.value || '0')}
                             />
-                            <label className="plan-check">
-                              <input
-                                type="checkbox"
-                                checked={unlimited}
-                                onChange={(e) => setFeature(plan.id, key, e.target.checked ? 'unlimited' : '1')}
-                              />
-                              ∞
-                            </label>
+                            <button
+                              type="button"
+                              className={`unlimited-pill${unlimited ? ' is-on' : ''}`}
+                              aria-pressed={unlimited}
+                              onClick={() => setFeature(plan.id, key, unlimited ? '1' : 'unlimited')}
+                            >
+                              Illimité
+                            </button>
                           </div>
                         </td>
                       );
