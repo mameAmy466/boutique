@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\JournalEntryController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\Platform\PlatformActivityController;
 use App\Http\Controllers\Api\Platform\PlatformAdminController;
@@ -36,6 +37,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::middleware('throttle:6,1')->group(function () {
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgot']);
+    Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+});
 Route::get('/plans', [PlanController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -63,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/organizations/{organization}/reactivate', [PlatformOrganizationController::class, 'reactivate']);
         Route::post('/organizations/{organization}/close', [PlatformOrganizationController::class, 'close']);
         Route::put('/organizations/{organization}/subscription', [PlatformOrganizationController::class, 'updateSubscription']);
+        Route::post('/organizations/{organization}/users/{user}/password', [PlatformOrganizationController::class, 'resetUserPassword']);
         Route::post('/organizations/{organization}/payments', [PlatformOrganizationController::class, 'recordPayment']);
         Route::get('/plans', [PlatformPlanController::class, 'index']);
         Route::put('/plans/{plan}', [PlatformPlanController::class, 'update']);

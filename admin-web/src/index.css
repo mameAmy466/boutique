@@ -4770,3 +4770,32 @@ tr.is-clickable {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent);
 }
+.login-forgot {
+  display: block;
+  margin: -4px 0 4px;
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+}
+.reset-done {
+  display: grid;
+  gap: 12px;
+  color: #fff;
+  font-size: 14px;
+}
+.reset-done p {
+  margin: 0;
+}
+.reset-hint {
+  font-size: 12.5px;
+  color: color-mix(in srgb, #fff 75%, transparent);
+}
+.reset-cta {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+.plain-list .user-reset-btn {
+  margin-left: auto;
+}

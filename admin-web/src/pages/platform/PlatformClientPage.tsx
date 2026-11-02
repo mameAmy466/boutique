@@ -141,6 +141,18 @@ export function PlatformClientPage() {
     );
   }
 
+  function resetUserPassword(u: { id: number; name: string }) {
+    const password = window.prompt(
+      `Nouveau mot de passe pour ${u.name} (8 caractères minimum). Communique-le lui : il sera déconnecté de ses appareils.`,
+      '',
+    );
+    if (!password) return;
+    run(async () => {
+      await api.post(`/platform/organizations/${org!.id}/users/${u.id}/password`, { password });
+      window.alert(`Mot de passe de ${u.name} modifié.`);
+    }, false);
+  }
+
   function closeAccount() {
     if (!window.confirm(`Fermer définitivement le compte « ${org!.name} » ? Ses utilisateurs ne pourront plus se connecter.`)) return;
     run(() => api.post(`/platform/organizations/${org!.id}/close`));
@@ -421,6 +433,9 @@ export function PlatformClientPage() {
                 <strong>{u.name}</strong> <span className="hint">{u.email}</span>{' '}
                 <span className="badge neutral">{u.role ? ROLE_LABEL[u.role.slug] ?? u.role.name : '—'}</span>
                 {!u.is_active && <span className="badge bad">Désactivé</span>}
+                <button type="button" className="btn btn-sm user-reset-btn" disabled={busy} onClick={() => resetUserPassword(u)}>
+                  Mot de passe
+                </button>
               </li>
             ))}
           </ul>

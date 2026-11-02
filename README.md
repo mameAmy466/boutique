@@ -37,6 +37,26 @@ plateforme (sans organisation ni boutique) :
 - email : `admin@boutique.test`
 - mot de passe : `password`
 
+## Envoi d'e-mails (mot de passe oublié, nouvelles inscriptions)
+
+Tant que `MAIL_MAILER=log`, les e-mails sont seulement écrits dans
+`storage/logs/laravel.log`. Pour les envoyer vraiment (exemple avec une
+adresse e-mail OVH), dans `.env` :
+
+```
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps
+MAIL_HOST=ssl0.ovh.net
+MAIL_PORT=465
+MAIL_USERNAME=contact@myboutiqu.com
+MAIL_PASSWORD=le-mot-de-passe-de-la-boite
+MAIL_FROM_ADDRESS=contact@myboutiqu.com
+MAIL_FROM_NAME="Boutique"
+```
+
+puis `php artisan config:cache`. En attendant, le Super Admin peut définir un
+nouveau mot de passe pour un utilisateur depuis la fiche du client.
+
 ## Lancer les tests
 
 Les tests tournent sur SQLite en mémoire (déjà configuré dans

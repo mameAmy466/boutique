@@ -377,6 +377,27 @@ class PlatformOrganizationController extends Controller
         return $this->show($organization);
     }
 
+    /**
+     * Sets a new password for one of the client's users — when someone is
+     * locked out and the reset e-mail cannot reach them. Signs them out
+     * everywhere.
+     */
+    public function resetUserPassword(Request $request, Organization $organization, User $user)
+    {
+        abort_unless($user->organization_id === $organization->id, 404);
+
+        $data = $request->validate(['password' => ['required', 'string', 'min:8']], [
+            'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
+        ]);
+
+        $user->update(['password' => $data['password']]);
+        $user->tokens()->delete();
+
+        PlatformAuditLog::record($organization, 'user_password_reset', "Mot de passe de {$user->name} ({$user->email}) réinitialisé par l'administration.");
+
+        return response()->json(['message' => 'Mot de passe modifié.']);
+    }
+
     private function markApproved(Request $request, Organization $organization, ?string $note = null): void
     {
         if ($organization->registration_status === Organization::REGISTRATION_APPROVED) {

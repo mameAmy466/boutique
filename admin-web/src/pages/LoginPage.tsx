@@ -83,6 +83,9 @@ export function LoginPage() {
                 required
               />
             </div>
+            <Link className="login-forgot" to="/mot-de-passe-oublie">
+              Mot de passe oublié ?
+            </Link>
             <button className="login-submit" type="submit" disabled={submitting}>
               {submitting ? 'Connexion…' : 'Se connecter'}
             </button>
