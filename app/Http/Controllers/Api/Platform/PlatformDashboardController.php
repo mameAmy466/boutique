@@ -15,7 +15,6 @@ class PlatformDashboardController extends Controller
         $subscriptions = Subscription::query()
             ->with('plan')
             ->whereIn('id', Subscription::query()->selectRaw('max(id)')->where('status', '!=', Subscription::STATUS_CANCELLED)->groupBy('organization_id'))
-            ->whereIn('organization_id', Organization::clients()->select('id'))
             ->get()
             ->each(fn (Subscription $subscription) => $subscriptionService->refreshStatus($subscription));
 
@@ -32,17 +31,17 @@ class PlatformDashboardController extends Controller
 
         return response()->json([
             'organizations' => [
-                'total' => Organization::clients()->count(),
-                'active' => Organization::clients()->where('status', Organization::STATUS_ACTIVE)->count(),
-                'suspended' => Organization::clients()->where('status', Organization::STATUS_SUSPENDED)->count(),
-                'closed' => Organization::clients()->where('status', Organization::STATUS_CLOSED)->count(),
-                'inactive' => Organization::clients()->where('status', Organization::STATUS_INACTIVE)->count(),
+                'total' => Organization::count(),
+                'active' => Organization::where('status', Organization::STATUS_ACTIVE)->count(),
+                'suspended' => Organization::where('status', Organization::STATUS_SUSPENDED)->count(),
+                'closed' => Organization::where('status', Organization::STATUS_CLOSED)->count(),
+                'inactive' => Organization::where('status', Organization::STATUS_INACTIVE)->count(),
             ],
             'registrations' => [
-                'pending' => Organization::clients()->whereIn('registration_status', [
+                'pending' => Organization::whereIn('registration_status', [
                     Organization::REGISTRATION_PENDING, Organization::REGISTRATION_INFO_REQUESTED,
                 ])->count(),
-                'awaiting_activation' => Organization::clients()->where('registration_status', Organization::REGISTRATION_APPROVED)
+                'awaiting_activation' => Organization::where('registration_status', Organization::REGISTRATION_APPROVED)
                     ->where('status', Organization::STATUS_INACTIVE)->count(),
             ],
             'subscriptions' => [

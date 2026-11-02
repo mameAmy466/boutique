@@ -74,7 +74,10 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (! $user || ! Auth::validate($credentials) || ! $user->is_active) {
+        // Hash::check, not Auth::validate: the latter goes through whatever
+        // guard is the default, and Sanctum's guard cannot validate
+        // credentials (same reason as in updateProfile).
+        if (! $user || ! Hash::check($credentials['password'], $user->password) || ! $user->is_active) {
             throw ValidationException::withMessages([
                 'email' => ['Identifiants invalides ou compte désactivé.'],
             ]);

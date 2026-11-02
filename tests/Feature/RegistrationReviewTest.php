@@ -17,11 +17,9 @@ class RegistrationReviewTest extends TestCase
 
     private function operator(): User
     {
-        $role = Role::firstOrCreate(['slug' => Role::SUPER_ADMIN], ['name' => Role::SUPER_ADMIN]);
-
         return User::factory()->create([
-            'role_id' => $role->id,
-            'organization_id' => $this->createOrganization()->id,
+            'role_id' => null,
+            'organization_id' => null,
             'is_platform_admin' => true,
             'email' => 'operateur@example.com',
         ]);

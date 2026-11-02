@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Database\Seeders\AccountingSeeder;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -103,12 +102,6 @@ class Organization extends Model
     public function isAwaitingReview(): bool
     {
         return in_array($this->registration_status, [self::REGISTRATION_PENDING, self::REGISTRATION_INFO_REQUESTED], true);
-    }
-
-    /** Client organizations only: the one holding the platform admins is not a shop. */
-    public function scopeClients(Builder $query): void
-    {
-        $query->whereDoesntHave('users', fn ($users) => $users->where('is_platform_admin', true));
     }
 
     public function isActive(): bool

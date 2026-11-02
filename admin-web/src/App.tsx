@@ -40,6 +40,7 @@ import { PlatformPlansPage } from './pages/platform/PlatformPlansPage';
 import { PlatformPaymentsPage } from './pages/platform/PlatformPaymentsPage';
 import { PlatformHistoryPage } from './pages/platform/PlatformHistoryPage';
 import { PlatformRegistrationsPage } from './pages/platform/PlatformRegistrationsPage';
+import { PlatformAdminsPage } from './pages/platform/PlatformAdminsPage';
 
 export default function App() {
   return (
@@ -86,6 +87,7 @@ export default function App() {
               <Route path="/plateforme/formules" element={<PlatformPlansPage />} />
               <Route path="/plateforme/paiements" element={<PlatformPaymentsPage />} />
               <Route path="/plateforme/historique" element={<PlatformHistoryPage />} />
+              <Route path="/plateforme/administrateurs" element={<PlatformAdminsPage />} />
             </Route>
           </Route>
         </Routes>

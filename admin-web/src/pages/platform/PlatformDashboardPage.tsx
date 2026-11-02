@@ -22,7 +22,7 @@ export function PlatformDashboardPage() {
         soon.setDate(soon.getDate() + 7);
         setAttention(
           organizations
-            .filter((o) => !o.is_platform_owner && o.status !== 'closed' && o.status !== 'inactive')
+            .filter((o) => o.status !== 'closed' && o.status !== 'inactive')
             .filter((o) => {
               const s = o.subscription;
               if (!s) return true;

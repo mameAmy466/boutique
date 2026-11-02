@@ -240,7 +240,7 @@ export function PlatformClientsPage() {
                         Voir la demande
                       </Link>
                     )}
-                    {!o.is_platform_owner && o.status !== 'closed' && o.status !== 'inactive' && (
+                    {o.status !== 'closed' && o.status !== 'inactive' && (
                       <button
                         type="button"
                         className={`btn btn-sm${o.status === 'active' ? ' btn-danger' : ''}`}

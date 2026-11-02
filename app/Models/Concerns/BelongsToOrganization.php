@@ -24,7 +24,7 @@ trait BelongsToOrganization
         });
 
         static::creating(function ($model) {
-            if (! $model->organization_id && ($organizationId = Tenant::id()) !== null) {
+            if (! $model->organization_id && ($organizationId = Tenant::id())) {
                 $model->organization_id = $organizationId;
             }
         });

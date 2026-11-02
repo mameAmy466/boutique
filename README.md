@@ -30,8 +30,9 @@ Configurer les identifiants MySQL dans `.env` (`DB_DATABASE`, `DB_USERNAME`,
 php artisan migrate --seed
 ```
 
-Le seeder crée les 3 rôles (`super_admin`, `admin_boutique`, `caissier`) et
-un administrateur général :
+Le seeder crée les 3 rôles des boutiques (`super_admin` = propriétaire d'une
+boutique cliente, `admin_boutique`, `caissier`) et l'administrateur de la
+plateforme (sans organisation ni boutique) :
 
 - email : `admin@boutique.test`
 - mot de passe : `password`
@@ -112,6 +113,11 @@ utilisateurs, produits, ventes, stock et plan comptable lui appartiennent.
   `feature_not_included`) ; `/api/subscription` renvoie `features`, `limits`
   et `usage`, à partir desquels l'interface construit ses menus
   (`admin-web/src/lib/features.ts`).
+- **Administrateurs de la plateforme** : comptes `is_platform_admin`, sans
+  organisation, sans rôle de boutique, sans abonnement. Ils ne sont pas des
+  clients : l'API leur refuse toute route métier (403 `platform_account`) et
+  les scopes de tenant ne leur renvoient aucune donnée de boutique. Ils se
+  gèrent depuis Super Admin → Administrateurs.
 - **Super Admin** : les comptes `is_platform_admin` (et eux seuls) accèdent à
   `/api/platform/*` et aux pages « Super Admin » de l'interface : clients,
   suspension/réactivation, abonnements, paiements, formules et historique.

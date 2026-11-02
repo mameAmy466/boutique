@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\JournalEntryController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\Platform\PlatformActivityController;
+use App\Http\Controllers\Api\Platform\PlatformAdminController;
 use App\Http\Controllers\Api\Platform\PlatformDashboardController;
 use App\Http\Controllers\Api\Platform\PlatformOrganizationController;
 use App\Http\Controllers\Api\Platform\PlatformPlanController;
@@ -66,6 +67,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/plans', [PlatformPlanController::class, 'index']);
         Route::put('/plans/{plan}', [PlatformPlanController::class, 'update']);
         Route::get('/payments', [PlatformActivityController::class, 'payments']);
+        Route::get('/admins', [PlatformAdminController::class, 'index']);
+        Route::post('/admins', [PlatformAdminController::class, 'store']);
+        Route::put('/admins/{admin}', [PlatformAdminController::class, 'update']);
         Route::get('/audit-logs', [PlatformActivityController::class, 'auditLogs']);
     });
 });

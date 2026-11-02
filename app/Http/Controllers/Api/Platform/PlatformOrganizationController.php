@@ -37,7 +37,6 @@ class PlatformOrganizationController extends Controller
     public function index(Request $request)
     {
         $query = Organization::query()
-            ->clients()
             ->withCount([
                 'shops' => fn ($q) => $q->withoutGlobalScope('organization'),
                 'users',
@@ -192,8 +191,6 @@ class PlatformOrganizationController extends Controller
     {
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
 
-        $this->guardNotOwnOrganization($request, $organization);
-
         $organization->update([
             'status' => Organization::STATUS_SUSPENDED,
             'suspended_at' => now(),
@@ -226,8 +223,6 @@ class PlatformOrganizationController extends Controller
 
     public function close(Request $request, Organization $organization)
     {
-        $this->guardNotOwnOrganization($request, $organization);
-
         $organization->update(['status' => Organization::STATUS_CLOSED, 'suspended_at' => now()]);
         PlatformAuditLog::record($organization, 'organization_closed', 'Compte fermé.');
 
@@ -240,8 +235,6 @@ class PlatformOrganizationController extends Controller
      */
     public function destroy(Request $request, Organization $organization)
     {
-        $this->guardNotOwnOrganization($request, $organization);
-
         $request->validate(['confirm_name' => ['required', 'string', Rule::in([$organization->name])]], [
             'confirm_name.in' => 'Le nom saisi ne correspond pas.',
         ]);
@@ -275,7 +268,6 @@ class PlatformOrganizationController extends Controller
         $status = $request->string('status')->toString() ?: 'open';
 
         $query = Organization::query()
-            ->clients()
             ->withCount(['shops' => fn ($q) => $q->withoutGlobalScope('organization'), 'users'])
             ->latest('id');
 
@@ -352,8 +344,6 @@ class PlatformOrganizationController extends Controller
     public function reject(Request $request, Organization $organization)
     {
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
-
-        $this->guardNotOwnOrganization($request, $organization);
 
         // The request and its data are kept: it can still be accepted later.
         $organization->update([
@@ -570,17 +560,6 @@ class PlatformOrganizationController extends Controller
                     : null,
             ] : null,
             'last_payment' => $lastPayment?->only(['amount', 'paid_at', 'method']),
-            'is_platform_owner' => $organization->users()->where('is_platform_admin', true)->exists(),
         ];
-    }
-
-    /** The operator cannot lock themselves out of the platform. */
-    private function guardNotOwnOrganization(Request $request, Organization $organization): void
-    {
-        abort_if(
-            $request->user()->organization_id === $organization->id,
-            422,
-            'Impossible de suspendre, fermer ou supprimer votre propre organisation.',
-        );
     }
 }

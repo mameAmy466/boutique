@@ -67,7 +67,9 @@ export function ProtectedLayout() {
   }
 
   useEffect(() => {
-    if (user) loadSubscription();
+    // The platform account has no organization, hence no subscription.
+    if (user?.is_platform_admin) setSubscriptionLoaded(true);
+    else if (user) loadSubscription();
     loadPendingRequests();
   }, [user?.id]);
 
@@ -80,7 +82,7 @@ export function ProtectedLayout() {
   // Super Admin edits a formula: pick that up whenever the tab comes back.
   useEffect(() => {
     const onFocus = () => {
-      if (user) loadSubscription();
+      if (user && !user.is_platform_admin) loadSubscription();
     };
     window.addEventListener('focus', onFocus);
     window.addEventListener(FEATURE_DENIED_EVENT, onFocus);
@@ -169,6 +171,7 @@ export function ProtectedLayout() {
     { to: '/plateforme/formules', label: 'Formules', icon: <IconTag /> },
     { to: '/plateforme/paiements', label: 'Paiements', icon: <IconCoin /> },
     { to: '/plateforme/historique', label: 'Historique', icon: <IconAudit /> },
+    { to: '/plateforme/administrateurs', label: 'Administrateurs', icon: <IconUsers /> },
   ];
 
   const accountingItems: NavGroupItem[] = ([

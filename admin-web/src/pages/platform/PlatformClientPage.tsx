@@ -174,19 +174,18 @@ export function PlatformClientPage() {
           <h1>{org.name}</h1>
           <p>
             Client depuis le {formatDate(org.created_at)}
-            {org.is_platform_owner ? ' · votre organisation' : ''}
           </p>
         </div>
         <div className="shops-heading-actions">
           <button type="button" className="btn btn-primary" onClick={openPayment} disabled={busy}>
             Enregistrer un paiement
           </button>
-          {!org.is_platform_owner && org.status === 'active' && (
+          {org.status === 'active' && (
             <button type="button" className="btn btn-danger" onClick={suspend} disabled={busy}>
               Suspendre
             </button>
           )}
-          {!org.is_platform_owner && (org.status === 'suspended' || org.status === 'closed') && (
+          {(org.status === 'suspended' || org.status === 'closed') && (
             <button type="button" className="btn" onClick={reactivate} disabled={busy}>
               Réactiver
             </button>
@@ -457,35 +456,33 @@ export function PlatformClientPage() {
         </div>
       </section>
 
-      {!org.is_platform_owner && (
-        <section className="card danger-zone">
-          <h2>Zone sensible</h2>
-          {org.status !== 'closed' ? (
-            <>
-              <p>Fermer le compte coupe définitivement l'accès du client. Ses données sont conservées.</p>
-              <button type="button" className="btn btn-danger" onClick={closeAccount} disabled={busy}>
-                Fermer le compte
-              </button>
-            </>
-          ) : (
-            <>
-              <p>Supprimer efface le client et toutes ses données (ventes, stock, comptabilité). C'est irréversible.</p>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => {
-                  setConfirmName('');
-                  setFormError(null);
-                  setModal('delete');
-                }}
-                disabled={busy}
-              >
-                Supprimer définitivement
-              </button>
-            </>
-          )}
-        </section>
-      )}
+      <section className="card danger-zone">
+        <h2>Zone sensible</h2>
+        {org.status !== 'closed' ? (
+          <>
+            <p>Fermer le compte coupe définitivement l'accès du client. Ses données sont conservées.</p>
+            <button type="button" className="btn btn-danger" onClick={closeAccount} disabled={busy}>
+              Fermer le compte
+            </button>
+          </>
+        ) : (
+          <>
+            <p>Supprimer efface le client et toutes ses données (ventes, stock, comptabilité). C'est irréversible.</p>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => {
+                setConfirmName('');
+                setFormError(null);
+                setModal('delete');
+              }}
+              disabled={busy}
+            >
+              Supprimer définitivement
+            </button>
+          </>
+        )}
+      </section>
 
       {modal === 'approve' && (
         <ApproveRegistrationModal

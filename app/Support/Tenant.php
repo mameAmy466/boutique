@@ -11,10 +11,14 @@ use Illuminate\Support\Facades\Auth;
  * can pin a tenant explicitly with Tenant::as().
  *
  * Returns null when there is no tenant at all (console, seeders, guests),
- * in which case the tenant scopes are not applied.
+ * in which case the tenant scopes are not applied; Tenant::NONE for the
+ * platform admin, who sees no tenant data through the scopes.
  */
 class Tenant
 {
+    /** Matches no organization. */
+    public const NONE = 0;
+
     private static ?int $forced = null;
 
     private static bool $isForced = false;
@@ -31,7 +35,16 @@ class Tenant
             return null;
         }
 
-        return Auth::user()?->organization_id;
+        $user = Auth::user();
+
+        // The platform admin belongs to no organization and must not fall
+        // through to "no scope": 0 matches no tenant row. Platform code reads
+        // a client's data explicitly (Tenant::as, withoutGlobalScope).
+        if ($user?->is_platform_admin) {
+            return self::NONE;
+        }
+
+        return $user?->organization_id;
     }
 
     /**

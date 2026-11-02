@@ -721,7 +721,6 @@ export interface PlatformOrganization {
   users_count: number;
   subscription: PlatformSubscription | null;
   last_payment: { amount: string | number; paid_at: string; method: string } | null;
-  is_platform_owner: boolean;
 }
 
 export interface PlatformAuditLogRow {
@@ -790,4 +789,12 @@ export interface PlatformActivity {
   limits: Record<string, number | null>;
   last_seen_at: string | null;
   active_users_7_days: number;
+}
+
+export interface PlatformAdminRow {
+  id: number;
+  name: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
 }

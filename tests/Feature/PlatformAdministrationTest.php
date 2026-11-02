@@ -31,7 +31,11 @@ class PlatformAdministrationTest extends TestCase
 
     private function operator(): User
     {
-        return $this->makeOwner($this->createOrganization(), platformAdmin: true);
+        return User::factory()->create([
+            'role_id' => null,
+            'organization_id' => null,
+            'is_platform_admin' => true,
+        ]);
     }
 
     public function test_a_clients_own_admin_cannot_reach_the_platform_space(): void
@@ -55,7 +59,7 @@ class PlatformAdministrationTest extends TestCase
         $this->assertSame('simple', $row['subscription']['plan']['code']);
         $this->assertSame($owner->email, $row['owner']['email']);
         $this->assertSame(1, $row['shops_count']);
-        // The operator's own organization is not a client.
+        // The operator has no organization: only clients are listed.
         $this->assertCount(1, $rows);
 
         $this->actingAs($operator, 'sanctum')->getJson('/api/platform/dashboard')
@@ -91,15 +95,6 @@ class PlatformAdministrationTest extends TestCase
             ['organization_suspended', 'organization_reactivated'],
             PlatformAuditLog::where('organization_id', $clientOrg->id)->orderBy('id')->pluck('action')->all(),
         );
-    }
-
-    public function test_the_operator_cannot_suspend_their_own_organization(): void
-    {
-        $operator = $this->operator();
-
-        $this->actingAs($operator, 'sanctum')
-            ->postJson("/api/platform/organizations/{$operator->organization_id}/suspend")
-            ->assertStatus(422);
     }
 
     public function test_an_expired_subscription_blocks_access_after_the_grace_period(): void
