@@ -448,7 +448,7 @@ export function ProductsPage() {
                     placeholder="Nouvelle catégorie…"
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
-                    style={{ flex: 1, padding: '6px 9px', borderRadius: 7, border: '1px solid var(--border)' }}
+                    style={{ flex: 1, padding: '6px 12px' }}
                   />
                   <button type="button" className="btn btn-sm" onClick={handleCreateCategory}>
                     Ajouter
@@ -471,7 +471,7 @@ export function ProductsPage() {
                     placeholder="Nouveau fournisseur…"
                     value={newSupplier}
                     onChange={(e) => setNewSupplier(e.target.value)}
-                    style={{ flex: 1, padding: '6px 9px', borderRadius: 7, border: '1px solid var(--border)' }}
+                    style={{ flex: 1, padding: '6px 12px' }}
                   />
                   <button type="button" className="btn btn-sm" onClick={handleCreateSupplier}>
                     Ajouter
