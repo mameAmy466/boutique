@@ -55,10 +55,11 @@ class PlatformAdministrationTest extends TestCase
         $this->assertSame('simple', $row['subscription']['plan']['code']);
         $this->assertSame($owner->email, $row['owner']['email']);
         $this->assertSame(1, $row['shops_count']);
-        $this->assertCount(2, $rows);
+        // The operator's own organization is not a client.
+        $this->assertCount(1, $rows);
 
         $this->actingAs($operator, 'sanctum')->getJson('/api/platform/dashboard')
-            ->assertOk()->assertJsonPath('organizations.total', 2);
+            ->assertOk()->assertJsonPath('organizations.total', 1);
     }
 
     public function test_a_suspended_client_is_blocked_by_the_api_until_reactivated(): void
@@ -263,5 +264,20 @@ class PlatformAdministrationTest extends TestCase
         $rows = $this->actingAs($operator, 'sanctum')->getJson('/api/platform/organizations?search=%23'.$clientOrg->id)->json();
 
         $this->assertSame([$clientOrg->id], array_column($rows, 'id'));
+    }
+
+    public function test_the_platform_account_has_no_shop_space(): void
+    {
+        $operator = $this->operator();
+
+        foreach (['/api/products', '/api/sales', '/api/stocks', '/api/dashboard/general', '/api/shops', '/api/users'] as $url) {
+            $this->actingAs($operator, 'sanctum')->getJson($url)
+                ->assertForbidden()->assertJsonPath('code', 'platform_account');
+        }
+        $this->actingAs($operator, 'sanctum')->postJson('/api/products', ['name' => 'X', 'reference' => 'X'])->assertForbidden();
+
+        // Its own profile and the platform space stay available.
+        $this->actingAs($operator, 'sanctum')->getJson('/api/me')->assertOk();
+        $this->actingAs($operator, 'sanctum')->getJson('/api/platform/organizations')->assertOk();
     }
 }

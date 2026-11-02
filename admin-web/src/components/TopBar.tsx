@@ -8,10 +8,13 @@ export function TopBar({
   lead,
   onMenuClick,
   menuOpen,
+  shopTools = true,
 }: {
   lead?: ReactNode;
   onMenuClick?: () => void;
   menuOpen?: boolean;
+  /** Product search and stock alerts: only for a shop's own space. */
+  shopTools?: boolean;
 }) {
   return (
     <header className="topbar">
@@ -29,8 +32,8 @@ export function TopBar({
       )}
       <div className="topbar-lead">{lead}</div>
       <div className="topbar-actions">
-        <SearchBox variant="inline" />
-        <NotificationsBell />
+        {shopTools && <SearchBox variant="inline" />}
+        {shopTools && <NotificationsBell />}
         <ProfileMenu />
       </div>
     </header>

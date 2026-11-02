@@ -130,6 +130,13 @@ export function ProtectedLayout() {
     return <Navigate to="/login" replace />;
   }
 
+  // The platform account administers the platform only: it has no shop,
+  // sales or stock of its own (the API refuses them too).
+  const platformPaths = ['/plateforme', '/account'];
+  if (user.is_platform_admin && !platformPaths.some((path) => location.pathname.startsWith(path))) {
+    return <Navigate to="/plateforme" replace />;
+  }
+
   const isAdmin = user.role?.slug === 'super_admin' || user.role?.slug === 'admin_boutique';
   const isSuperAdmin = user.role?.slug === 'super_admin';
   const isPlatformAdmin = Boolean(user.is_platform_admin);
@@ -212,54 +219,61 @@ export function ProtectedLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          {isPlatformAdmin && (
+          {isPlatformAdmin ? (
             <NavGroup id="platform" label="Super Admin" icon={<IconSettings />} items={platformItems} />
+          ) : (
+            <>
+              <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <IconGrid />
+                <span>Tableau de bord</span>
+              </NavLink>
+
+              <NavGroup
+                id="sales"
+                label="Ventes & Caisses"
+                icon={<IconRegister />}
+                items={[
+                  { to: '/sales', label: 'Ventes', icon: <IconRegister /> },
+                  { to: '/cash-sessions', label: 'Caisses', icon: <IconCashDrawer /> },
+                ]}
+              />
+
+              <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />
+
+              <NavGroup id="partners" label="Tiers" icon={<IconTruck />} items={partnerItems} />
+
+              {isAdmin && purchasingItems.length > 0 && (
+                <NavGroup id="purchasing" label="Achats" icon={<IconSend />} items={purchasingItems} />
+              )}
+
+              {isAdmin && accountingItems.length > 0 && (
+                <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />
+              )}
+
+              <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
+            </>
           )}
-
-          <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <IconGrid />
-            <span>Tableau de bord</span>
-          </NavLink>
-
-          <NavGroup
-            id="sales"
-            label="Ventes & Caisses"
-            icon={<IconRegister />}
-            items={[
-              { to: '/sales', label: 'Ventes', icon: <IconRegister /> },
-              { to: '/cash-sessions', label: 'Caisses', icon: <IconCashDrawer /> },
-            ]}
-          />
-
-          <NavGroup id="stock" label="Stocks & Produits" icon={<IconBox />} items={stockProduits} />
-
-          <NavGroup id="partners" label="Tiers" icon={<IconTruck />} items={partnerItems} />
-
-          {isAdmin && purchasingItems.length > 0 && (
-            <NavGroup id="purchasing" label="Achats" icon={<IconSend />} items={purchasingItems} />
-          )}
-
-          {isAdmin && accountingItems.length > 0 && (
-            <NavGroup id="accounting" label="Comptabilité" icon={<IconBank />} items={accountingItems} />
-          )}
-
-          <NavGroup id="admin" label="Administration" icon={<IconSettings />} items={adminItems} />
         </nav>
 
-        <div className="dash-sidebar-promo">
-          <p>Gérez votre stock en temps réel</p>
-          <Link to="/stocks" className="dash-sidebar-promo-btn">
-            Accéder
-          </Link>
-        </div>
+        {!isPlatformAdmin && (
+          <div className="dash-sidebar-promo">
+            <p>Gérez votre stock en temps réel</p>
+            <Link to="/stocks" className="dash-sidebar-promo-btn">
+              Accéder
+            </Link>
+          </div>
+        )}
       </aside>
 
       <div className="main-col">
         <TopBar
           onMenuClick={() => setMenuOpen(true)}
           menuOpen={menuOpen}
+          shopTools={!isPlatformAdmin}
           lead={
-            isDashboard ? (
+            isPlatformAdmin ? (
+              <p className="topbar-context">Espace Super Admin · plateforme Boutique</p>
+            ) : isDashboard ? (
               <div>
                 <p className="dash-hello">Bonjour {firstName},</p>
                 <h1>Bienvenue sur Boutique</h1>

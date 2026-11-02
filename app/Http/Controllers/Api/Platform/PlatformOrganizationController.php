@@ -37,6 +37,7 @@ class PlatformOrganizationController extends Controller
     public function index(Request $request)
     {
         $query = Organization::query()
+            ->clients()
             ->withCount([
                 'shops' => fn ($q) => $q->withoutGlobalScope('organization'),
                 'users',
@@ -274,6 +275,7 @@ class PlatformOrganizationController extends Controller
         $status = $request->string('status')->toString() ?: 'open';
 
         $query = Organization::query()
+            ->clients()
             ->withCount(['shops' => fn ($q) => $q->withoutGlobalScope('organization'), 'users'])
             ->latest('id');
 

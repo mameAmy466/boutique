@@ -92,7 +92,8 @@ export function AccountPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    // The platform account has no shop, hence no sales figures.
+    if (!user || user.is_platform_admin) return;
     const path =
       user.role?.slug === 'super_admin' ? '/dashboard/general' : user.shop_id ? `/dashboard/shop/${user.shop_id}` : null;
     if (!path) return;
@@ -107,7 +108,8 @@ export function AccountPage() {
   const roleLabel = user.is_platform_admin
     ? 'Super Admin plateforme'
     : ROLE_LABELS[user.role?.slug ?? ''] ?? user.role?.name ?? 'Compte';
-  const shopLabel = user.shop?.name ?? 'Toutes les boutiques';
+  const isPlatformAdmin = Boolean(user.is_platform_admin);
+  const shopLabel = isPlatformAdmin ? 'Plateforme' : user.shop?.name ?? 'Toutes les boutiques';
   const monthRevenue = figures?.revenue.this_month ?? 0;
   const budget = Number(user.shop?.monthly_budget ?? 0);
   const budgetPct = budget > 0 ? Math.min(100, Math.round((monthRevenue / budget) * 100)) : 0;
@@ -156,7 +158,9 @@ export function AccountPage() {
 
   return (
     <div className="account-page">
-      <Breadcrumb items={[{ label: 'Tableau de bord', to: '/' }, { label: 'Page profil' }]} />
+      <Breadcrumb
+        items={[isPlatformAdmin ? { label: 'Super Admin', to: '/plateforme' } : { label: 'Tableau de bord', to: '/' }, { label: 'Page profil' }]}
+      />
 
       <div className="account-title-row">
         <h1>Page profil</h1>
@@ -187,11 +191,17 @@ export function AccountPage() {
               {user.created_at
                 ? `Compte créé le ${formatDate(user.created_at)}.`
                 : 'Compte rattaché à votre boutique.'}{' '}
-              {user.shop
-                ? `Vous travaillez actuellement sur ${user.shop.name}.`
-                : 'Vous avez accès à l’ensemble des boutiques.'}
+              {isPlatformAdmin
+                ? 'Vous administrez la plateforme : clients, abonnements et formules.'
+                : user.shop
+                  ? `Vous travaillez actuellement sur ${user.shop.name}.`
+                  : 'Vous avez accès à l’ensemble des boutiques.'}
             </p>
-            <Link to={user.shop_id ? '/sales' : '/shops'}>{user.shop_id ? 'Voir les ventes' : 'Voir les boutiques'} →</Link>
+            {isPlatformAdmin ? (
+              <Link to="/plateforme/clients">Voir les clients →</Link>
+            ) : (
+              <Link to={user.shop_id ? '/sales' : '/shops'}>{user.shop_id ? 'Voir les ventes' : 'Voir les boutiques'} →</Link>
+            )}
           </div>
         </div>
       </section>
@@ -223,10 +233,12 @@ export function AccountPage() {
                 <label htmlFor="acc-role">Rôle</label>
                 <input id="acc-role" value={roleLabel} disabled />
               </div>
-              <div className="account-field">
-                <label htmlFor="acc-shop">Boutique</label>
-                <input id="acc-shop" value={shopLabel} disabled />
-              </div>
+              {!isPlatformAdmin && (
+                <div className="account-field">
+                  <label htmlFor="acc-shop">Boutique</label>
+                  <input id="acc-shop" value={shopLabel} disabled />
+                </div>
+              )}
             </div>
             <div className="account-card-actions">
               <button type="submit" className="btn btn-primary" disabled={nameSubmitting}>
@@ -281,6 +293,7 @@ export function AccountPage() {
           </form>
         </div>
 
+        {!isPlatformAdmin && (
         <section className="account-card account-activity">
           <h3>Activité</h3>
           <ActivityBars data={figures?.sales_trend ?? []} />
@@ -295,6 +308,7 @@ export function AccountPage() {
             </p>
           </div>
         </section>
+        )}
       </div>
     </div>
   );
