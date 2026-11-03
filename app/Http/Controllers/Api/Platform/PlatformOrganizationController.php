@@ -16,6 +16,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\OrganizationProvisioner;
+use App\Services\OrganizationPurger;
 use App\Services\SubscriptionService;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
@@ -247,17 +248,7 @@ class PlatformOrganizationController extends Controller
 
         PlatformAuditLog::record(null, 'organization_deleted', "Client « {$organization->name} » (#{$organization->id}) supprimé définitivement.");
 
-        DB::transaction(function () use ($organization) {
-            // Users are only detached when their organization goes (nullOnDelete):
-            // remember them, let the organization's data cascade away, then
-            // remove the accounts too.
-            $userIds = User::where('organization_id', $organization->id)->pluck('id');
-            $organization->delete();
-            User::whereIn('id', $userIds)->each(function (User $user) {
-                $user->tokens()->delete();
-                $user->delete();
-            });
-        });
+        app(OrganizationPurger::class)->purge($organization);
 
         return response()->noContent();
     }
