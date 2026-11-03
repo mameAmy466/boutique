@@ -19,6 +19,20 @@ class Product extends Model
         return ['selling_price' => 'decimal:2'];
     }
 
+    public const REFERENCE_PREFIX = 'PRD-';
+
+    public static function nextReference(?int $organizationId): string
+    {
+        $last = self::withoutGlobalScopes()
+            ->where('organization_id', $organizationId)
+            ->where('reference', 'like', self::REFERENCE_PREFIX.'%')
+            ->pluck('reference')
+            ->map(fn (string $reference) => (int) substr($reference, strlen(self::REFERENCE_PREFIX)))
+            ->max() ?? 0;
+
+        return self::REFERENCE_PREFIX.str_pad((string) ($last + 1), 5, '0', STR_PAD_LEFT);
+    }
+
     /**
      * Every product has one barcode for good, printed on all its labels
      * whatever batch the item comes from: the manufacturer's when it is
@@ -26,6 +40,13 @@ class Product extends Model
      */
     protected static function booted(): void
     {
+        // The reference is numbered per client: PRD-00001, PRD-00002...
+        static::creating(function (Product $product) {
+            if (blank($product->reference)) {
+                $product->reference = self::nextReference($product->organization_id);
+            }
+        });
+
         static::created(function (Product $product) {
             if (! $product->barcode) {
                 $product->forceFill(['barcode' => Ean13::forProduct($product->id)])->saveQuietly();

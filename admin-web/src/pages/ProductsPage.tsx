@@ -19,7 +19,6 @@ const PAGE_SIZE = 12;
 function emptyForm() {
   return {
     name: '',
-    reference: '',
     barcode: '',
     selling_price: '',
     category_id: '',
@@ -105,7 +104,6 @@ export function ProductsPage() {
       if (imageFile) {
         const body = new FormData();
         body.append('name', form.name);
-        body.append('reference', form.reference);
         if (form.barcode) body.append('barcode', form.barcode);
         if (form.selling_price) body.append('selling_price', form.selling_price);
         if (form.category_id) body.append('category_id', form.category_id);
@@ -119,7 +117,6 @@ export function ProductsPage() {
       } else {
         await api.post('/products', {
           name: form.name,
-          reference: form.reference,
           barcode: form.barcode || undefined,
           selling_price: form.selling_price ? Number(form.selling_price) : undefined,
           category_id: form.category_id || undefined,
@@ -451,16 +448,7 @@ export function ProductsPage() {
               <div className="field">
                 <label htmlFor="p-name">Nom</label>
                 <input id="p-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              </div>
-              <div className="field">
-                <label htmlFor="p-ref">Référence</label>
-                <input
-                  id="p-ref"
-                  value={form.reference}
-                  onChange={(e) => setForm({ ...form, reference: e.target.value })}
-                  placeholder="REF-001"
-                  required
-                />
+                <p className="hint">La référence (PRD-00001…) est attribuée automatiquement.</p>
               </div>
               <div className="field">
                 <label htmlFor="p-barcode">Code-barres</label>
@@ -469,7 +457,7 @@ export function ProductsPage() {
                     id="p-barcode"
                     value={form.barcode}
                     onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                    placeholder="Scanner ou saisir"
+                    placeholder="Automatique si vide"
                   />
                   <button type="button" className="btn btn-sm" onClick={() => setScanTarget('create')} aria-label="Scanner le code-barres">
                     📷

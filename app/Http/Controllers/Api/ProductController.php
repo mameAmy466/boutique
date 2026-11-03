@@ -27,7 +27,8 @@ class ProductController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'reference' => ['required', 'string', 'max:100', TenantRule::unique('products', 'reference')],
+            // Generated (PRD-00001...) when not given.
+            'reference' => ['nullable', 'string', 'max:100', TenantRule::unique('products', 'reference')],
             'barcode' => ['nullable', 'string', 'max:64', TenantRule::unique('products', 'barcode')],
             'selling_price' => ['nullable', 'numeric', 'min:0'],
             'category_id' => ['nullable', TenantRule::exists('categories')],

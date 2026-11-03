@@ -50,4 +50,20 @@ class ProductBarcodeTest extends TestCase
         $as->putJson("/api/products/{$product['id']}", ['barcode' => null])->assertOk();
         $this->assertSame($barcode, Product::findOrFail($product['id'])->barcode);
     }
+
+    public function test_references_are_numbered_automatically_per_client(): void
+    {
+        $role = Role::firstOrCreate(['slug' => Role::SUPER_ADMIN], ['name' => Role::SUPER_ADMIN]);
+        $ownerA = User::factory()->create(['role_id' => $role->id, 'organization_id' => $this->createOrganization()->id]);
+        $ownerB = User::factory()->create(['role_id' => $role->id, 'organization_id' => $this->createOrganization()->id]);
+
+        $this->actingAs($ownerA, 'sanctum')->postJson('/api/products', ['name' => 'Sac'])
+            ->assertCreated()->assertJsonPath('reference', 'PRD-00001');
+        $this->actingAs($ownerA, 'sanctum')->postJson('/api/products', ['name' => 'Ceinture'])
+            ->assertCreated()->assertJsonPath('reference', 'PRD-00002');
+
+        // Each client has its own numbering.
+        $this->actingAs($ownerB, 'sanctum')->postJson('/api/products', ['name' => 'Chaussure'])
+            ->assertCreated()->assertJsonPath('reference', 'PRD-00001');
+    }
 }
