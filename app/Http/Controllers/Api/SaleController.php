@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\CashSession;
 use App\Models\Sale;
 use App\Models\Shop;
+use App\Models\User;
 use App\Services\SaleService;
 use App\Support\TenantRule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
@@ -63,6 +66,12 @@ class SaleController extends Controller
             'items.*.product_batch_id' => ['required', TenantRule::exists('product_batches')],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            // Selling below the minimum price: a manager confirms it himself,
+            // or a cashier gets a manager to type their credentials.
+            'confirm_below_min' => ['nullable', 'boolean'],
+            'price_authorization' => ['nullable', 'array'],
+            'price_authorization.email' => ['required_with:price_authorization', 'email'],
+            'price_authorization.password' => ['required_with:price_authorization', 'string'],
         ]);
 
         if (! $actor->isSuperAdmin() && (int) $data['shop_id'] !== $actor->shop_id) {
@@ -75,8 +84,10 @@ class SaleController extends Controller
             abort(422, 'Aucune session de caisse ouverte pour cet utilisateur.');
         }
 
+        $shop = Shop::findOrFail($data['shop_id']);
+
         $sale = $this->sales->createSale(
-            shop: Shop::findOrFail($data['shop_id']),
+            shop: $shop,
             cashier: $actor,
             cashSession: $cashSession,
             items: $data['items'],
@@ -84,6 +95,7 @@ class SaleController extends Controller
             customerName: $data['customer_name'] ?? null,
             discount: $data['discount'] ?? 0,
             taxRate: $data['tax_rate'] ?? 18.00,
+            priceAuthorizer: $this->priceAuthorizer($actor, $shop, $data),
         );
 
         return response()->json($sale, 201);
@@ -93,7 +105,7 @@ class SaleController extends Controller
     {
         $this->authorize('view', $sale);
 
-        return response()->json($sale->load(['items.productBatch.product', 'invoice', 'user', 'cancelledByUser']));
+        return response()->json($sale->load(['priceAuthorizer:id,name', 'items.productBatch.product', 'invoice', 'user', 'cancelledByUser']));
     }
 
     public function cancel(Request $request, Sale $sale)
@@ -107,5 +119,36 @@ class SaleController extends Controller
         $sale = $this->sales->cancelSale($sale, $request->user(), $data['reason']);
 
         return response()->json($sale);
+    }
+
+    /**
+     * The manager allowing prices below the minimum on this sale, if any:
+     * the seller themself when they manage the shop and confirmed, or the
+     * manager whose credentials were typed at the till. Wrong credentials
+     * are refused outright rather than silently ignored.
+     */
+    private function priceAuthorizer(User $actor, Shop $shop, array $data): ?User
+    {
+        $canAuthorize = fn (User $user) => ($user->is_active ?? true)
+            && $user->organization_id === $shop->organization_id
+            && ($user->isSuperAdmin() || ($user->isShopAdmin() && $user->shop_id === $shop->id));
+
+        if (! empty($data['confirm_below_min']) && $canAuthorize($actor)) {
+            return $actor;
+        }
+
+        if (empty($data['price_authorization'])) {
+            return null;
+        }
+
+        $manager = User::where('email', $data['price_authorization']['email'])->first();
+
+        if (! $manager || ! Hash::check($data['price_authorization']['password'], $manager->password) || ! $canAuthorize($manager)) {
+            throw ValidationException::withMessages([
+                'price_authorization' => ['Autorisation refusée : il faut l’e-mail et le mot de passe d’un responsable de cette boutique.'],
+            ]);
+        }
+
+        return $manager;
     }
 }

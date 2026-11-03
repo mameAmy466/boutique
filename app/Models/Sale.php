@@ -37,6 +37,7 @@ class Sale extends Model
         'tax_rate',
         'cancellation_reason',
         'cancelled_by',
+        'price_authorized_by',
         'cancelled_at',
     ];
 
@@ -99,6 +100,12 @@ class Sale extends Model
     public function cashSession(): BelongsTo
     {
         return $this->belongsTo(CashSession::class);
+    }
+
+    /** The manager who allowed one or more prices below the minimum. */
+    public function priceAuthorizer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'price_authorized_by');
     }
 
     public function items(): HasMany

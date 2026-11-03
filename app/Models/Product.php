@@ -13,10 +13,17 @@ class Product extends Model
 {
     use BelongsToOrganization, HasFactory;
 
+    protected function casts(): array
+    {
+        return ['selling_price' => 'decimal:2'];
+    }
+
     protected $fillable = [
         'organization_id',
         'name',
         'reference',
+        'barcode',
+        'selling_price',
         'category_id',
         'supplier_id',
         'brand',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api, ApiError, firstValidationError } from '../api/client';
 import type { Category, Product, Supplier } from '../api/types';
 import { useAuth } from '../context/AuthContext';
@@ -10,12 +10,18 @@ import { mediaUrl } from '../lib/format';
 import { IconBox, IconCamera } from '../components/DashboardIcons';
 import { useSubscription } from '../context/SubscriptionContext';
 
+const BarcodeScannerModal = lazy(() =>
+  import('../components/BarcodeScannerModal').then((m) => ({ default: m.BarcodeScannerModal })),
+);
+
 const PAGE_SIZE = 12;
 
 function emptyForm() {
   return {
     name: '',
     reference: '',
+    barcode: '',
+    selling_price: '',
     category_id: '',
     supplier_id: '',
     brand: '',
@@ -39,6 +45,10 @@ export function ProductsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
+  const [scanTarget, setScanTarget] = useState<'create' | 'edit' | null>(null);
+  const [saleSettings, setSaleSettings] = useState({ barcode: '', selling_price: '' });
+  const [saleSettingsSaving, setSaleSettingsSaving] = useState(false);
+  const [saleSettingsMessage, setSaleSettingsMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [newCategory, setNewCategory] = useState('');
@@ -96,6 +106,8 @@ export function ProductsPage() {
         const body = new FormData();
         body.append('name', form.name);
         body.append('reference', form.reference);
+        if (form.barcode) body.append('barcode', form.barcode);
+        if (form.selling_price) body.append('selling_price', form.selling_price);
         if (form.category_id) body.append('category_id', form.category_id);
         if (form.supplier_id) body.append('supplier_id', form.supplier_id);
         if (form.brand) body.append('brand', form.brand);
@@ -108,6 +120,8 @@ export function ProductsPage() {
         await api.post('/products', {
           name: form.name,
           reference: form.reference,
+          barcode: form.barcode || undefined,
+          selling_price: form.selling_price ? Number(form.selling_price) : undefined,
           category_id: form.category_id || undefined,
           supplier_id: form.supplier_id || undefined,
           brand: form.brand || undefined,
@@ -143,6 +157,33 @@ export function ProductsPage() {
   const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+
+  useEffect(() => {
+    setSaleSettings({
+      barcode: selectedProduct?.barcode ?? '',
+      selling_price: selectedProduct?.selling_price ? String(Math.round(Number(selectedProduct.selling_price))) : '',
+    });
+    setSaleSettingsMessage(null);
+  }, [selectedProduct?.id, selectedProduct?.barcode, selectedProduct?.selling_price]);
+
+  async function saveSaleSettings(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    setSaleSettingsSaving(true);
+    setSaleSettingsMessage(null);
+    try {
+      const updated = await api.put<Product>(`/products/${selectedProduct.id}`, {
+        barcode: saleSettings.barcode || null,
+        selling_price: saleSettings.selling_price ? Number(saleSettings.selling_price) : null,
+      });
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+      setSaleSettingsMessage('Enregistré.');
+    } catch (err) {
+      setSaleSettingsMessage(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
+    } finally {
+      setSaleSettingsSaving(false);
+    }
+  }
 
   useEffect(() => {
     setPage(1);
@@ -312,6 +353,34 @@ export function ProductsPage() {
                 <span className="label">Référence</span>
                 <div className="catalog-aside-box">{selectedProduct.reference}</div>
               </div>
+              <form className="catalog-aside-block sale-settings" onSubmit={saveSaleSettings}>
+                <span className="label">Vente</span>
+                <div className="input-with-action">
+                  <input
+                    aria-label="Code-barres"
+                    placeholder="Code-barres"
+                    value={saleSettings.barcode}
+                    onChange={(e) => setSaleSettings({ ...saleSettings, barcode: e.target.value })}
+                  />
+                  <button type="button" className="btn btn-sm" onClick={() => setScanTarget('edit')} aria-label="Scanner le code-barres">
+                    📷
+                  </button>
+                </div>
+                <input
+                  aria-label="Prix de vente habituel"
+                  type="number"
+                  min={0}
+                  placeholder="Prix de vente habituel"
+                  value={saleSettings.selling_price}
+                  onChange={(e) => setSaleSettings({ ...saleSettings, selling_price: e.target.value })}
+                />
+                {saleSettingsMessage && <p className="hint">{saleSettingsMessage}</p>}
+                {canManage && (
+                  <button type="submit" className="btn btn-sm btn-primary" disabled={saleSettingsSaving}>
+                    {saleSettingsSaving ? 'Enregistrement…' : 'Enregistrer'}
+                  </button>
+                )}
+              </form>
               <div className="catalog-aside-block">
                 <span className="label">Catégorie</span>
                 <div className="catalog-aside-box">
@@ -391,6 +460,31 @@ export function ProductsPage() {
                   onChange={(e) => setForm({ ...form, reference: e.target.value })}
                   placeholder="REF-001"
                   required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="p-barcode">Code-barres</label>
+                <div className="input-with-action">
+                  <input
+                    id="p-barcode"
+                    value={form.barcode}
+                    onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                    placeholder="Scanner ou saisir"
+                  />
+                  <button type="button" className="btn btn-sm" onClick={() => setScanTarget('create')} aria-label="Scanner le code-barres">
+                    📷
+                  </button>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="p-price">Prix de vente habituel (FCFA)</label>
+                <input
+                  id="p-price"
+                  type="number"
+                  min={0}
+                  value={form.selling_price}
+                  onChange={(e) => setForm({ ...form, selling_price: e.target.value })}
+                  placeholder="Proposé à la caisse"
                 />
               </div>
               <div className="field">
@@ -490,6 +584,18 @@ export function ProductsPage() {
             </div>
           </form>
         </Modal>
+      )}
+      {scanTarget && (
+        <Suspense fallback={null}>
+          <BarcodeScannerModal
+            onDetected={(code) => {
+              if (scanTarget === 'create') setForm((f) => ({ ...f, barcode: code }));
+              else setSaleSettings((v) => ({ ...v, barcode: code }));
+              setScanTarget(null);
+            }}
+            onClose={() => setScanTarget(null)}
+          />
+        </Suspense>
       )}
     </>
   );

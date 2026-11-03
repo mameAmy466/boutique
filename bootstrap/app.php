@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (PriceBelowMinimumException $e, $request) {
             return response()->json([
+                'code' => 'price_below_minimum',
                 'message' => $e->getMessage(),
                 'min_price' => $e->minPrice,
                 'attempted_price' => $e->attemptedPrice,

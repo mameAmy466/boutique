@@ -27,6 +27,8 @@ class ProductController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'reference' => ['required', 'string', 'max:100', TenantRule::unique('products', 'reference')],
+            'barcode' => ['nullable', 'string', 'max:64', TenantRule::unique('products', 'barcode')],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
             'category_id' => ['nullable', TenantRule::exists('categories')],
             'supplier_id' => ['nullable', TenantRule::exists('suppliers')],
             'brand' => ['nullable', 'string', 'max:255'],
@@ -36,6 +38,9 @@ class ProductController extends Controller
             'max_stock' => ['nullable', 'integer', 'min:0'],
             'status' => ['nullable', 'in:active,inactive'],
             'image' => ['nullable', 'image', 'max:4096'],
+        ], [
+            'barcode.unique' => 'Ce code-barres est déjà utilisé par un autre produit.',
+            'reference.unique' => 'Cette référence est déjà utilisée par un autre produit.',
         ]);
 
         if ($organization = $request->user()->organization) {
@@ -69,6 +74,8 @@ class ProductController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'reference' => ['sometimes', 'string', 'max:100', TenantRule::unique('products', 'reference')->ignore($product->id)],
+            'barcode' => ['nullable', 'string', 'max:64', TenantRule::unique('products', 'barcode')->ignore($product->id)],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
             'category_id' => ['nullable', TenantRule::exists('categories')],
             'supplier_id' => ['nullable', TenantRule::exists('suppliers')],
             'brand' => ['nullable', 'string', 'max:255'],
@@ -78,6 +85,9 @@ class ProductController extends Controller
             'max_stock' => ['nullable', 'integer', 'min:0'],
             'status' => ['nullable', 'in:active,inactive'],
             'image' => ['nullable', 'image', 'max:4096'],
+        ], [
+            'barcode.unique' => 'Ce code-barres est déjà utilisé par un autre produit.',
+            'reference.unique' => 'Cette référence est déjà utilisée par un autre produit.',
         ]);
 
         if ($request->hasFile('image')) {

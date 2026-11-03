@@ -4799,3 +4799,206 @@ tr.is-clickable {
 .plain-list .user-reset-btn {
   margin-left: auto;
 }
+.input-with-action {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.input-with-action input {
+  flex: 1;
+  min-width: 0;
+}
+.sale-settings {
+  display: grid;
+  gap: 8px;
+}
+.sale-settings input {
+  width: 100%;
+  font: inherit;
+  padding: 8px 12px;
+}
+.sale-settings .btn {
+  justify-self: start;
+}
+
+/* ---- Caisse : panier ---- */
+.cart {
+  display: grid;
+  gap: 8px;
+}
+.cart-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 170px 120px 32px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  /* Lighter than the fields, so the price and quantity stand out. */
+  background: color-mix(in srgb, var(--accent-soft) 35%, var(--surface));
+}
+.cart-line.is-below {
+  background: color-mix(in srgb, var(--danger-soft) 75%, var(--surface));
+}
+.cart-line-pick {
+  grid-template-columns: minmax(0, 1fr) 32px;
+  background: transparent;
+  padding: 0;
+}
+.cart-line-pick select {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+}
+.cart-product {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cart-product strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cart-product span {
+  font-size: 12px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cart-qty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cart-qty button {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cart-qty button:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+.cart-qty button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.app-shell .cart-qty input {
+  width: 52px;
+  text-align: center;
+  font: inherit;
+  font-weight: 700;
+  padding: 6px 4px;
+}
+.cart-price {
+  display: grid;
+  gap: 3px;
+}
+.app-shell .cart-price input {
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  text-align: right;
+  padding: 7px 10px;
+}
+.cart-min {
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+.cart-min.is-below {
+  color: var(--danger);
+  font-weight: 700;
+}
+.cart-total {
+  text-align: right;
+}
+.cart-remove {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 20px;
+  cursor: pointer;
+}
+.cart-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.checkout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  margin-bottom: 16px;
+}
+.checkout-pay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 320px;
+}
+.pay-pill {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.pay-pill.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+.checkout-total {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.checkout-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.checkout-total strong {
+  font-size: 28px;
+  color: var(--ink);
+}
+@media (max-width: 720px) {
+  .cart-line {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+  .cart-product {
+    grid-column: 1 / 2;
+  }
+  .cart-remove {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .cart-qty,
+  .cart-price,
+  .cart-total {
+    grid-column: 1 / -1;
+  }
+  .cart-total {
+    text-align: left;
+  }
+}

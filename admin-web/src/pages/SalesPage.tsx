@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { api, ApiError } from '../api/client';
+import { api, ApiError, firstValidationError } from '../api/client';
 import type { CashRegister, CashSession, Paginated, PaymentMethod, ProductBatch, Sale, Shop } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
@@ -35,6 +35,22 @@ interface Line {
   product_batch_id: string;
   quantity: string;
   unit_price: string;
+}
+
+/** The price proposed in the cart: the product's usual price, never below the batch minimum. */
+function usualPrice(batch: ProductBatch): string {
+  const usual = Number(batch.product?.selling_price ?? 0);
+  const min = Number(batch.min_price);
+  return String(Math.round(usual >= min ? usual : min));
+}
+
+function codeMatches(batch: ProductBatch, code: string): boolean {
+  const needle = code.toLowerCase();
+  return (
+    batch.batch_code.toLowerCase() === needle ||
+    (batch.product?.barcode ?? '').toLowerCase() === needle ||
+    (batch.product?.reference ?? '').toLowerCase() === needle
+  );
 }
 
 export function SalesPage() {
@@ -89,6 +105,10 @@ export function SalesPage() {
   const scanInputRef = useRef<HTMLInputElement>(null);
 
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+  const [authorizing, setAuthorizing] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   function loadSales() {
     setLoading(true);
@@ -222,17 +242,30 @@ export function SalesPage() {
     setLines((prev) => prev.filter((_, i) => i !== index));
   }
 
+  /**
+   * A scan (or a typed code) adds one unit: the product's barcode or
+   * reference picks its oldest batch that still has stock (first in, first
+   * out); a batch code picks that batch. Scanning again adds one more.
+   */
   function applyScannedCode(rawCode: string) {
     const code = rawCode.trim();
     if (!code) return;
 
-    const batch = batches.find((b) => b.batch_code.toLowerCase() === code.toLowerCase());
-    if (!batch) {
-      setScanError(`Aucun lot trouvé pour le code « ${code} » dans cette boutique.`);
+    const matching = batches.filter((b) => codeMatches(b, code));
+    if (matching.length === 0) {
+      setScanError(`Aucun produit trouvé pour le code « ${code} » dans cette boutique.`);
       return;
     }
-    if (batch.quantity_available === 0) {
-      setScanError(`${batch.product?.name ?? batch.batch_code} : rupture de stock sur ce lot.`);
+
+    const inCart = (batchId: number) =>
+      lines.filter((l) => l.product_batch_id === String(batchId)).reduce((sum, l) => sum + Number(l.quantity || 0), 0);
+    const batch = [...matching]
+      .sort((a, b) => a.received_at.localeCompare(b.received_at))
+      .find((b) => b.quantity_available - inCart(b.id) > 0);
+
+    if (!batch) {
+      const name = matching[0].product?.name ?? matching[0].batch_code;
+      setScanError(`${name} : plus de stock disponible dans cette boutique.`);
       return;
     }
 
@@ -244,8 +277,8 @@ export function SalesPage() {
           i === existingIndex ? { ...l, quantity: String(Number(l.quantity || 0) + 1) } : l,
         );
       }
+      const filledLine: Line = { product_batch_id: String(batch.id), quantity: '1', unit_price: usualPrice(batch) };
       const emptyIndex = prev.findIndex((l) => !l.product_batch_id);
-      const filledLine: Line = { product_batch_id: String(batch.id), quantity: '1', unit_price: batch.min_price };
       if (emptyIndex !== -1) {
         return prev.map((l, i) => (i === emptyIndex ? filledLine : l));
       }
@@ -254,6 +287,18 @@ export function SalesPage() {
 
     setScanInput('');
     scanInputRef.current?.focus();
+  }
+
+  function changeQuantity(index: number, delta: number) {
+    setLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== index) return l;
+        const batch = batches.find((b) => b.id === Number(l.product_batch_id));
+        const max = batch?.quantity_available ?? Infinity;
+        const next = Math.min(Math.max(Number(l.quantity || 0) + delta, 1), max);
+        return { ...l, quantity: String(next) };
+      }),
+    );
   }
 
   function handleScanKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -294,8 +339,29 @@ export function SalesPage() {
     }
   }
 
-  async function handleSubmitSale(e: FormEvent) {
+  /** Lines priced under their batch's minimum: they need a manager's go-ahead. */
+  const belowMinLines = lines.filter((l) => {
+    const batch = batches.find((b) => b.id === Number(l.product_batch_id));
+    return batch && l.unit_price !== '' && Number(l.unit_price) < Number(batch.min_price);
+  });
+
+  function handleSubmitSale(e: FormEvent) {
     e.preventDefault();
+    if (belowMinLines.length === 0) {
+      submitSale();
+    } else if (isAdmin) {
+      // A manager authorizes their own sale.
+      if (window.confirm('Certains prix sont sous le prix minimum. Valider quand même la vente ?')) {
+        submitSale({ confirm_below_min: true });
+      }
+    } else {
+      setAuthError(null);
+      setAuthPassword('');
+      setAuthorizing(true);
+    }
+  }
+
+  async function submitSale(authorization: Record<string, unknown> = {}) {
     if (!openSession) return;
     setFormError(null);
     setSubmitting(true);
@@ -314,18 +380,26 @@ export function SalesPage() {
             quantity: Number(l.quantity),
             unit_price: Number(l.unit_price),
           })),
+        ...authorization,
       });
       const detailed = await api.get<Sale>(`/sales/${created.id}`);
+      setAuthorizing(false);
       setCompletedSale(detailed);
+      // Stock changed: reload it for the next sale.
+      api.get<ProductBatch[]>(`/stocks?shop_id=${shopId}`).then(setBatches);
       loadSales();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Erreur inattendue.');
+      const message = err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.';
+      if (authorizing) setAuthError(message);
+      else setFormError(message);
     } finally {
       setSubmitting(false);
     }
   }
 
   function startNextSale() {
+    setScanInput('');
+    setScanError(null);
     setCompletedSale(null);
     setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
     setCustomerName('');
@@ -334,6 +408,8 @@ export function SalesPage() {
   }
 
   function closeSaleModal() {
+    setScanInput('');
+    setScanError(null);
     setShowNew(false);
     setCompletedSale(null);
     setLines([{ product_batch_id: '', quantity: '1', unit_price: '' }]);
@@ -587,16 +663,6 @@ export function SalesPage() {
             <form onSubmit={handleSubmitSale}>
               <div className="form-grid" style={{ marginBottom: 14 }}>
                 <div className="field">
-                  <label htmlFor="sale-payment">Mode de paiement</label>
-                  <select id="sale-payment" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
-                    {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
                   <label htmlFor="sale-customer">Client (optionnel)</label>
                   <input id="sale-customer" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                 </div>
@@ -635,7 +701,7 @@ export function SalesPage() {
                   value={scanInput}
                   onChange={(e) => setScanInput(e.target.value)}
                   onKeyDown={handleScanKeyDown}
-                  placeholder="Scanner (douchette) ou saisir le code du lot, puis Entrée…"
+                  placeholder="Scanner le code-barres, ou taper la référence / le code du lot, puis Entrée…"
                   autoFocus
                 />
                 <button type="button" className="btn btn-sm" onClick={() => setShowCamera(true)}>
@@ -644,74 +710,122 @@ export function SalesPage() {
               </div>
               {scanError && <div className="alert error">{scanError}</div>}
 
-              {lines.map((line, i) => {
-                const batch = batches.find((b) => b.id === Number(line.product_batch_id));
-                return (
-                  <div key={i} className="line-item-row">
-                    <div className="field">
-                      <label>Lot</label>
-                      <select
-                        value={line.product_batch_id}
-                        onChange={(e) => updateLine(i, { product_batch_id: e.target.value })}
-                        required
-                      >
-                        <option value="">— choisir —</option>
-                        {batches.map((b) => (
-                          <option key={b.id} value={b.id} disabled={b.quantity_available === 0}>
-                            {b.product?.name ?? b.batch_code} — dispo {b.quantity_available} — min {formatMoney(b.min_price)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label>Qté</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={line.quantity}
-                        onChange={(e) => updateLine(i, { quantity: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="field">
-                      <label>Prix unitaire</label>
-                      <input
-                        type="number"
-                        min={batch ? Number(batch.min_price) : 0}
-                        value={line.unit_price}
-                        onChange={(e) => updateLine(i, { unit_price: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="field">
-                      <label>Ligne</label>
-                      <div className="num" style={{ padding: '8px 0' }}>
-                        {formatMoney(Number(line.quantity || 0) * Number(line.unit_price || 0))}
+              <div className="cart">
+                {lines.map((line, i) => {
+                  const batch = batches.find((b) => b.id === Number(line.product_batch_id));
+                  if (!batch) {
+                    // Manual pick, for a product without barcode.
+                    return (
+                      <div key={i} className="cart-line cart-line-pick">
+                        <select
+                          aria-label="Choisir un produit"
+                          value={line.product_batch_id}
+                          onChange={(e) => {
+                            const picked = batches.find((b) => b.id === Number(e.target.value));
+                            updateLine(i, { product_batch_id: e.target.value, unit_price: picked ? usualPrice(picked) : '' });
+                          }}
+                          required={lines.length === 1}
+                        >
+                          <option value="">Choisir un produit dans la liste…</option>
+                          {batches.map((b) => (
+                            <option key={b.id} value={b.id} disabled={b.quantity_available === 0}>
+                              {b.product?.name ?? b.batch_code} — {b.batch_code} — stock {b.quantity_available}
+                            </option>
+                          ))}
+                        </select>
+                        {lines.length > 1 && (
+                          <button type="button" className="cart-remove" onClick={() => removeLine(i)} aria-label="Retirer">
+                            ×
+                          </button>
+                        )}
                       </div>
+                    );
+                  }
+                  const qty = Number(line.quantity || 0);
+                  const price = Number(line.unit_price || 0);
+                  const below = line.unit_price !== '' && price < Number(batch.min_price);
+                  return (
+                    <div key={i} className={`cart-line${below ? ' is-below' : ''}`}>
+                      <div className="cart-product">
+                        <strong>{batch.product?.name ?? batch.batch_code}</strong>
+                        <span>
+                          {batch.product?.barcode ?? batch.product?.reference ?? ''} · lot {batch.batch_code} · stock {batch.quantity_available}
+                        </span>
+                      </div>
+                      <div className="cart-qty" aria-label="Quantité">
+                        <button type="button" onClick={() => changeQuantity(i, -1)} disabled={qty <= 1} aria-label="Moins">
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={batch.quantity_available}
+                          value={line.quantity}
+                          onChange={(e) => updateLine(i, { quantity: e.target.value })}
+                          aria-label="Quantité"
+                          required
+                        />
+                        <button type="button" onClick={() => changeQuantity(i, 1)} disabled={qty >= batch.quantity_available} aria-label="Plus">
+                          +
+                        </button>
+                      </div>
+                      <div className="cart-price">
+                        <input
+                          type="number"
+                          min={0}
+                          value={line.unit_price}
+                          onChange={(e) => updateLine(i, { unit_price: e.target.value })}
+                          aria-label="Prix unitaire"
+                          required
+                        />
+                        <span className={below ? 'cart-min is-below' : 'cart-min'}>
+                          {below ? 'Sous le minimum : ' : 'min '}
+                          {formatMoney(batch.min_price)}
+                        </span>
+                      </div>
+                      <strong className="cart-total num">{formatMoney(qty * price)}</strong>
+                      <button type="button" className="cart-remove" onClick={() => removeLine(i)} aria-label="Retirer">
+                        ×
+                      </button>
                     </div>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeLine(i)} aria-label="Retirer">
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
-              <button type="button" className="btn btn-sm" onClick={addLine} style={{ marginBottom: 16 }}>
-                + Ajouter un article
+                  );
+                })}
+              </div>
+              <button type="button" className="btn btn-sm" onClick={addLine} style={{ margin: '10px 0 16px' }}>
+                + Choisir un produit sans le scanner
               </button>
 
-              <div className="alert success">
-                {isAdmin && Number(discount || 0) > 0 ? (
-                  <>
-                    Sous-total : <span className="num">{formatMoney(subtotal)}</span> — Remise :{' '}
-                    <span className="num">-{formatMoney(discount)}</span>
-                    <br />
-                    Total net : <strong className="num">{formatMoney(total)}</strong>
-                  </>
-                ) : (
-                  <>
-                    Total de la vente : <strong className="num">{formatMoney(total)}</strong>
-                  </>
-                )}
+              {belowMinLines.length > 0 && (
+                <div className="alert error">
+                  {belowMinLines.length === 1 ? 'Un article est vendu' : `${belowMinLines.length} articles sont vendus`} sous le prix
+                  minimum. {isAdmin ? 'Vous devrez confirmer la vente.' : "La vente demandera l'autorisation d'un responsable."}
+                </div>
+              )}
+
+              <div className="checkout">
+                <div className="checkout-pay" role="radiogroup" aria-label="Mode de paiement">
+                  {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={paymentMethod === value}
+                      className={`pay-pill${paymentMethod === value ? ' is-on' : ''}`}
+                      onClick={() => setPaymentMethod(value as PaymentMethod)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="checkout-total">
+                  {isAdmin && Number(discount || 0) > 0 && (
+                    <span className="hint">
+                      Sous-total {formatMoney(subtotal)} · remise -{formatMoney(discount)}
+                    </span>
+                  )}
+                  <span className="checkout-label">Total à payer</span>
+                  <strong className="num">{formatMoney(total)}</strong>
+                </div>
               </div>
 
               <div className="form-actions">
@@ -719,13 +833,55 @@ export function SalesPage() {
                   Annuler
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Enregistrement…' : 'Valider la vente'}
+                  {submitting ? 'Enregistrement…' : `Valider la vente · ${formatMoney(total)}`}
                 </button>
               </div>
             </form>
           )}
             </>
           )}
+        </Modal>
+      )}
+
+      {authorizing && (
+        <Modal title="Autorisation d'un responsable" onClose={() => setAuthorizing(false)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitSale({ price_authorization: { email: authEmail, password: authPassword } });
+            }}
+          >
+            <p>
+              {belowMinLines.length === 1 ? 'Un article est vendu' : `${belowMinLines.length} articles sont vendus`} sous le prix minimum.
+              Un responsable de la boutique doit saisir ses identifiants pour l'autoriser.
+            </p>
+            {authError && <div className="alert error">{authError}</div>}
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="auth-email">E-mail du responsable</label>
+                <input id="auth-email" type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required autoFocus />
+              </div>
+              <div className="field">
+                <label htmlFor="auth-password">Mot de passe</label>
+                <input
+                  id="auth-password"
+                  type="password"
+                  autoComplete="off"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="form-actions" style={{ marginTop: 16 }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setAuthorizing(false)}>
+                Revenir au panier
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'Vérification…' : 'Autoriser et valider'}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
 
@@ -752,6 +908,17 @@ export function SalesPage() {
                   🖨️ Imprimer
                 </button>
               </div>
+
+              {viewSale.price_authorizer && (
+                <div className="alert subscription-notice" style={{ marginTop: 16 }}>
+                  Prix sous le minimum autorisé par <strong>{viewSale.price_authorizer.name}</strong>
+                  {viewSale.items?.some((item) => item.below_min_price) &&
+                    ` (${viewSale.items.filter((item) => item.below_min_price).length} article${
+                      viewSale.items.filter((item) => item.below_min_price).length > 1 ? 's' : ''
+                    })`}
+                  .
+                </div>
+              )}
 
               {viewSale.status === 'cancelled' && (
                 <div className="alert error" style={{ marginTop: 16 }}>

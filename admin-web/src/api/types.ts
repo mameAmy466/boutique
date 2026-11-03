@@ -73,6 +73,8 @@ export interface Product {
   id: number;
   name: string;
   reference: string;
+  barcode: string | null;
+  selling_price: string | null;
   category_id: number | null;
   supplier_id: number | null;
   brand: string | null;
@@ -212,6 +214,7 @@ export interface SaleItem {
   cost_price: string;
   min_price: string;
   unit_price: string;
+  below_min_price?: boolean;
   line_total: string;
   product_batch?: ProductBatch;
 }
@@ -245,6 +248,7 @@ export interface Sale {
   items?: SaleItem[];
   invoice?: Invoice | null;
   user?: User;
+  price_authorizer?: Pick<User, 'id' | 'name'> | null;
   cancelled_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 

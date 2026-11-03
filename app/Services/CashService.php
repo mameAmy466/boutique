@@ -7,7 +7,6 @@ use App\Models\CashSession;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class CashService
 {
@@ -19,7 +18,7 @@ class CashService
             ->exists();
 
         if ($alreadyOpen) {
-            throw new RuntimeException('Cette caisse a déjà une session ouverte.');
+            abort(422, 'Cette caisse a déjà une session ouverte.');
         }
 
         return CashSession::create([
@@ -37,7 +36,7 @@ class CashService
             $session = CashSession::query()->lockForUpdate()->findOrFail($session->id);
 
             if (! $session->isOpen()) {
-                throw new RuntimeException('Cette session de caisse est déjà clôturée.');
+                abort(422, 'Cette session de caisse est déjà clôturée.');
             }
 
             $cashSalesTotal = Sale::query()

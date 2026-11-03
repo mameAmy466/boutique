@@ -39,8 +39,9 @@ class SaleService
         ?string $customerName = null,
         float $discount = 0,
         float $taxRate = 18.00,
+        ?User $priceAuthorizer = null,
     ): Sale {
-        $sale = DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount, $taxRate) {
+        $sale = DB::transaction(function () use ($shop, $cashier, $cashSession, $items, $paymentMethod, $customerName, $discount, $taxRate, $priceAuthorizer) {
             $subtotal = 0;
             $totalCost = 0;
             $lines = [];
@@ -59,7 +60,12 @@ class SaleService
                 }
 
                 // Server-side enforcement: never trust a client-side check.
-                $this->pricing->assertValidSalePrice($batch, $unitPrice);
+                // Below the minimum only with a manager's authorization
+                // (checked by the controller), which the sale records.
+                $belowMin = $unitPrice < (float) $batch->min_price;
+                if (! $belowMin || ! $priceAuthorizer) {
+                    $this->pricing->assertValidSalePrice($batch, $unitPrice);
+                }
 
                 $lineTotal = round($unitPrice * $quantity, 2);
                 $subtotal += $lineTotal;
@@ -70,6 +76,7 @@ class SaleService
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'line_total' => $lineTotal,
+                    'below_min_price' => $belowMin,
                 ];
             }
 
@@ -106,6 +113,7 @@ class SaleService
                 'payment_method' => $paymentMethod,
                 'status' => Sale::STATUS_COMPLETED,
                 'tax_rate' => $taxRate,
+                'price_authorized_by' => collect($lines)->contains('below_min_price', true) ? $priceAuthorizer?->id : null,
             ]);
 
             $sale->update([
@@ -122,6 +130,7 @@ class SaleService
                     'cost_price' => $batch->cost_price,
                     'min_price' => $batch->min_price,
                     'unit_price' => $line['unit_price'],
+                    'below_min_price' => $line['below_min_price'],
                     'line_total' => $line['line_total'],
                 ]);
 
