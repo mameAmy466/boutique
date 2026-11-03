@@ -4836,9 +4836,6 @@ tr.is-clickable {
   /* Lighter than the fields, so the price and quantity stand out. */
   background: color-mix(in srgb, var(--accent-soft) 35%, var(--surface));
 }
-.cart-line.is-below {
-  background: color-mix(in srgb, var(--danger-soft) 75%, var(--surface));
-}
 .cart-line-pick {
   grid-template-columns: minmax(0, 1fr) 32px;
   background: transparent;
@@ -4912,10 +4909,6 @@ tr.is-clickable {
   font-size: 11px;
   color: var(--ink-soft);
   text-align: right;
-}
-.cart-min.is-below {
-  color: var(--danger);
-  font-weight: 700;
 }
 .cart-total {
   text-align: right;

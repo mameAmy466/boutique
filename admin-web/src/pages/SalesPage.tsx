@@ -335,20 +335,24 @@ export function SalesPage() {
     }
   }
 
-  /** Lines priced under their batch's minimum: the sale cannot be validated. */
-  const belowMinLines = lines.filter((l) => {
-    const batch = batches.find((b) => b.id === Number(l.product_batch_id));
-    return batch && l.unit_price !== '' && Number(l.unit_price) < Number(batch.min_price);
-  });
+  /** The price as allowed: never under the batch's minimum (raised to it). */
+  function clampPrice(line: Line): Line {
+    const batch = batches.find((b) => b.id === Number(line.product_batch_id));
+    if (!batch) return line;
+    const min = Number(batch.min_price);
+    return line.unit_price === '' || Number(line.unit_price) < min ? { ...line, unit_price: String(Math.round(min)) } : line;
+  }
 
   function handleSubmitSale(e: FormEvent) {
     e.preventDefault();
-    // The minimum price is absolute (the API refuses it too).
-    if (belowMinLines.length > 0) return;
-    submitSale();
+    // A price typed under the minimum goes back to the minimum (the API
+    // refuses anything lower anyway).
+    const clamped = lines.map(clampPrice);
+    setLines(clamped);
+    submitSale(clamped);
   }
 
-  async function submitSale() {
+  async function submitSale(saleLines: Line[] = lines) {
     if (!openSession) return;
     setFormError(null);
     setSubmitting(true);
@@ -360,7 +364,7 @@ export function SalesPage() {
         customer_name: customerName || undefined,
         discount: isAdmin ? Number(discount || 0) : undefined,
         tax_rate: taxExempt ? 0 : 18,
-        items: lines
+        items: saleLines
           .filter((l) => l.product_batch_id)
           .map((l) => ({
             product_batch_id: Number(l.product_batch_id),
@@ -726,9 +730,8 @@ export function SalesPage() {
                   }
                   const qty = Number(line.quantity || 0);
                   const price = Number(line.unit_price || 0);
-                  const below = line.unit_price !== '' && price < Number(batch.min_price);
                   return (
-                    <div key={i} className={`cart-line${below ? ' is-below' : ''}`}>
+                    <div key={i} className="cart-line">
                       <div className="cart-product">
                         <strong>{batch.product?.name ?? batch.batch_code}</strong>
                         <span>
@@ -758,13 +761,11 @@ export function SalesPage() {
                           min={Number(batch.min_price)}
                           value={line.unit_price}
                           onChange={(e) => updateLine(i, { unit_price: e.target.value })}
+                          onBlur={() => updateLine(i, clampPrice(line))}
                           aria-label="Prix unitaire"
                           required
                         />
-                        <span className={below ? 'cart-min is-below' : 'cart-min'}>
-                          {below ? 'Minimum : ' : 'min '}
-                          {formatMoney(batch.min_price)}
-                        </span>
+                        <span className="cart-min">min {formatMoney(batch.min_price)}</span>
                       </div>
                       <strong className="cart-total num">{formatMoney(qty * price)}</strong>
                       <button type="button" className="cart-remove" onClick={() => removeLine(i)} aria-label="Retirer">
@@ -777,13 +778,6 @@ export function SalesPage() {
               <button type="button" className="btn btn-sm" onClick={addLine} style={{ margin: '10px 0 16px' }}>
                 + Choisir un produit sans le scanner
               </button>
-
-              {belowMinLines.length > 0 && (
-                <div className="alert error">
-                  Impossible de vendre sous le prix minimum : remonte le prix
-                  {belowMinLines.length > 1 ? ` des ${belowMinLines.length} articles en rouge` : " de l'article en rouge"}.
-                </div>
-              )}
 
               <div className="checkout">
                 <div className="checkout-pay" role="radiogroup" aria-label="Mode de paiement">
@@ -815,7 +809,7 @@ export function SalesPage() {
                 <button type="button" className="btn btn-ghost" onClick={closeSaleModal}>
                   Annuler
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting || belowMinLines.length > 0}>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Enregistrement…' : `Valider la vente · ${formatMoney(total)}`}
                 </button>
               </div>
