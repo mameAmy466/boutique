@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use App\Support\Ean13;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,20 @@ class Product extends Model
     protected function casts(): array
     {
         return ['selling_price' => 'decimal:2'];
+    }
+
+    /**
+     * Every product has one barcode for good, printed on all its labels
+     * whatever batch the item comes from: the manufacturer's when it is
+     * typed or scanned in, an in-store one otherwise.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Product $product) {
+            if (! $product->barcode) {
+                $product->forceFill(['barcode' => Ean13::forProduct($product->id)])->saveQuietly();
+            }
+        });
     }
 
     protected $fillable = [

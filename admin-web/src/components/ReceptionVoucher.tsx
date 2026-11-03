@@ -21,6 +21,11 @@ export function ReceptionVoucher({ batch, shop }: { batch: ProductBatch; shop: S
         <div>
           Lot <strong className="mono">{batch.batch_code}</strong>
         </div>
+        {batch.product?.barcode && (
+          <div>
+            Code-barres produit <strong className="mono">{batch.product.barcode}</strong>
+          </div>
+        )}
         <div>{formatDate(batch.received_at)}</div>
         <div>Fournisseur : {batch.supplier?.name ?? 'Non renseigné'}</div>
         {batch.supplier?.phone && <div>Tél. fournisseur : {batch.supplier.phone}</div>}

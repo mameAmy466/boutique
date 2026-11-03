@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\SubscriptionService;
+use App\Support\Ean13;
 use App\Support\TenantRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -97,6 +98,12 @@ class ProductController extends Controller
             $data['image_path'] = $request->file('image')->store('products', 'public');
         }
         unset($data['image']);
+
+        // Clearing the barcode gives the product back its in-store code: a
+        // product always keeps one barcode for its labels and the till.
+        if (array_key_exists('barcode', $data) && blank($data['barcode'])) {
+            $data['barcode'] = Ean13::forProduct($product->id);
+        }
 
         $product->update($data);
 

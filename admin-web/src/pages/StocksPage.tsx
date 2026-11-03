@@ -413,7 +413,7 @@ export function StocksPage() {
                       </td>
                       <td data-label="Reçu le">{formatDate(b.received_at)}</td>
                       <td data-label="Actions" className="row-actions" onClick={(e) => e.stopPropagation()}>
-                        <button type="button" className="btn btn-icon" onClick={() => setCodeBatch(b)} title="Code-barres" aria-label="Code-barres">
+                        <button type="button" className="btn btn-icon" onClick={() => setCodeBatch(b)} title="Étiquette du produit" aria-label="Étiquette du produit">
                           <IconBarcode />
                         </button>
                         <button type="button" className="btn btn-icon" onClick={() => setVoucherBatch(b)} title="Bon de réception" aria-label="Bon de réception">
