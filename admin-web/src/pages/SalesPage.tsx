@@ -105,10 +105,6 @@ export function SalesPage() {
   const scanInputRef = useRef<HTMLInputElement>(null);
 
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
-  const [authorizing, setAuthorizing] = useState(false);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
 
   function loadSales() {
     setLoading(true);
@@ -339,7 +335,7 @@ export function SalesPage() {
     }
   }
 
-  /** Lines priced under their batch's minimum: they need a manager's go-ahead. */
+  /** Lines priced under their batch's minimum: the sale cannot be validated. */
   const belowMinLines = lines.filter((l) => {
     const batch = batches.find((b) => b.id === Number(l.product_batch_id));
     return batch && l.unit_price !== '' && Number(l.unit_price) < Number(batch.min_price);
@@ -347,21 +343,12 @@ export function SalesPage() {
 
   function handleSubmitSale(e: FormEvent) {
     e.preventDefault();
-    if (belowMinLines.length === 0) {
-      submitSale();
-    } else if (isAdmin) {
-      // A manager authorizes their own sale.
-      if (window.confirm('Certains prix sont sous le prix minimum. Valider quand même la vente ?')) {
-        submitSale({ confirm_below_min: true });
-      }
-    } else {
-      setAuthError(null);
-      setAuthPassword('');
-      setAuthorizing(true);
-    }
+    // The minimum price is absolute (the API refuses it too).
+    if (belowMinLines.length > 0) return;
+    submitSale();
   }
 
-  async function submitSale(authorization: Record<string, unknown> = {}) {
+  async function submitSale() {
     if (!openSession) return;
     setFormError(null);
     setSubmitting(true);
@@ -380,18 +367,14 @@ export function SalesPage() {
             quantity: Number(l.quantity),
             unit_price: Number(l.unit_price),
           })),
-        ...authorization,
       });
       const detailed = await api.get<Sale>(`/sales/${created.id}`);
-      setAuthorizing(false);
       setCompletedSale(detailed);
       // Stock changed: reload it for the next sale.
       api.get<ProductBatch[]>(`/stocks?shop_id=${shopId}`).then(setBatches);
       loadSales();
     } catch (err) {
-      const message = err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.';
-      if (authorizing) setAuthError(message);
-      else setFormError(message);
+      setFormError(err instanceof ApiError ? firstValidationError(err.body) ?? err.message : 'Erreur inattendue.');
     } finally {
       setSubmitting(false);
     }
@@ -772,14 +755,14 @@ export function SalesPage() {
                       <div className="cart-price">
                         <input
                           type="number"
-                          min={0}
+                          min={Number(batch.min_price)}
                           value={line.unit_price}
                           onChange={(e) => updateLine(i, { unit_price: e.target.value })}
                           aria-label="Prix unitaire"
                           required
                         />
                         <span className={below ? 'cart-min is-below' : 'cart-min'}>
-                          {below ? 'Sous le minimum : ' : 'min '}
+                          {below ? 'Minimum : ' : 'min '}
                           {formatMoney(batch.min_price)}
                         </span>
                       </div>
@@ -797,8 +780,8 @@ export function SalesPage() {
 
               {belowMinLines.length > 0 && (
                 <div className="alert error">
-                  {belowMinLines.length === 1 ? 'Un article est vendu' : `${belowMinLines.length} articles sont vendus`} sous le prix
-                  minimum. {isAdmin ? 'Vous devrez confirmer la vente.' : "La vente demandera l'autorisation d'un responsable."}
+                  Impossible de vendre sous le prix minimum : remonte le prix
+                  {belowMinLines.length > 1 ? ` des ${belowMinLines.length} articles en rouge` : " de l'article en rouge"}.
                 </div>
               )}
 
@@ -832,7 +815,7 @@ export function SalesPage() {
                 <button type="button" className="btn btn-ghost" onClick={closeSaleModal}>
                   Annuler
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                <button type="submit" className="btn btn-primary" disabled={submitting || belowMinLines.length > 0}>
                   {submitting ? 'Enregistrement…' : `Valider la vente · ${formatMoney(total)}`}
                 </button>
               </div>
@@ -840,48 +823,6 @@ export function SalesPage() {
           )}
             </>
           )}
-        </Modal>
-      )}
-
-      {authorizing && (
-        <Modal title="Autorisation d'un responsable" onClose={() => setAuthorizing(false)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitSale({ price_authorization: { email: authEmail, password: authPassword } });
-            }}
-          >
-            <p>
-              {belowMinLines.length === 1 ? 'Un article est vendu' : `${belowMinLines.length} articles sont vendus`} sous le prix minimum.
-              Un responsable de la boutique doit saisir ses identifiants pour l'autoriser.
-            </p>
-            {authError && <div className="alert error">{authError}</div>}
-            <div className="form-grid">
-              <div className="field">
-                <label htmlFor="auth-email">E-mail du responsable</label>
-                <input id="auth-email" type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required autoFocus />
-              </div>
-              <div className="field">
-                <label htmlFor="auth-password">Mot de passe</label>
-                <input
-                  id="auth-password"
-                  type="password"
-                  autoComplete="off"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="form-actions" style={{ marginTop: 16 }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setAuthorizing(false)}>
-                Revenir au panier
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Vérification…' : 'Autoriser et valider'}
-              </button>
-            </div>
-          </form>
         </Modal>
       )}
 
@@ -908,17 +849,6 @@ export function SalesPage() {
                   🖨️ Imprimer
                 </button>
               </div>
-
-              {viewSale.price_authorizer && (
-                <div className="alert subscription-notice" style={{ marginTop: 16 }}>
-                  Prix sous le minimum autorisé par <strong>{viewSale.price_authorizer.name}</strong>
-                  {viewSale.items?.some((item) => item.below_min_price) &&
-                    ` (${viewSale.items.filter((item) => item.below_min_price).length} article${
-                      viewSale.items.filter((item) => item.below_min_price).length > 1 ? 's' : ''
-                    })`}
-                  .
-                </div>
-              )}
 
               {viewSale.status === 'cancelled' && (
                 <div className="alert error" style={{ marginTop: 16 }}>

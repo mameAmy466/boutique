@@ -7,18 +7,16 @@ use App\Models\CashSession;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Role;
-use App\Models\Sale;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * At the till: any price above the minimum, never below it unless a manager
- * of the shop authorizes it — the seller themself when they manage the
- * shop, or a manager typing their credentials for a cashier.
+ * At the till: any price at or above the minimum, never below it — for
+ * every role, with no way around it.
  */
-class SalePriceAuthorizationTest extends TestCase
+class SaleMinimumPriceAtTillTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -72,58 +70,28 @@ class SalePriceAuthorizationTest extends TestCase
         ]);
     }
 
-    public function test_a_price_above_the_minimum_needs_no_authorization(): void
+    public function test_any_price_from_the_minimum_up_is_accepted(): void
     {
         $cashier = $this->user(Role::CAISSIER, 'caisse@example.com');
 
+        $this->sell($cashier, 1500)->assertCreated();
         $this->sell($cashier, 9000)->assertCreated();
-        $this->assertSame(48, $this->batch->fresh()->quantity_available);
+        $this->assertSame(46, $this->batch->fresh()->quantity_available);
     }
 
-    public function test_below_the_minimum_without_authorization_is_refused(): void
+    public function test_nobody_can_sell_below_the_minimum(): void
     {
-        $cashier = $this->user(Role::CAISSIER, 'caisse@example.com');
+        foreach ([Role::CAISSIER, Role::ADMIN_BOUTIQUE, Role::SUPER_ADMIN] as $i => $role) {
+            $seller = $this->user($role, "vendeur{$i}@example.com");
 
-        $this->sell($cashier, 1200)->assertStatus(422)->assertJsonPath('code', 'price_below_minimum');
-        // A cashier cannot authorize themself.
-        $this->sell($cashier, 1200, ['confirm_below_min' => true])->assertStatus(422);
+            $this->sell($seller, 1499, [
+                // Extra fields from an old client are ignored, not obeyed.
+                'confirm_below_min' => true,
+                'price_authorization' => ['email' => "vendeur{$i}@example.com", 'password' => 'secret123'],
+            ])->assertStatus(422)->assertJsonPath('code', 'price_below_minimum');
+        }
+
         $this->assertSame(50, $this->batch->fresh()->quantity_available);
-    }
-
-    public function test_a_manager_typing_their_credentials_authorizes_it(): void
-    {
-        $cashier = $this->user(Role::CAISSIER, 'caisse@example.com');
-        $manager = $this->user(Role::ADMIN_BOUTIQUE, 'chef@example.com');
-
-        $sale = $this->sell($cashier, 1200, [
-            'price_authorization' => ['email' => 'chef@example.com', 'password' => 'secret123'],
-        ])->assertCreated()->json();
-
-        $sale = Sale::with('items')->findOrFail($sale['id']);
-        $this->assertSame($manager->id, $sale->price_authorized_by);
-        $this->assertTrue($sale->items->first()->below_min_price);
-    }
-
-    public function test_wrong_or_insufficient_credentials_are_refused(): void
-    {
-        $cashier = $this->user(Role::CAISSIER, 'caisse@example.com');
-        $this->user(Role::ADMIN_BOUTIQUE, 'chef@example.com');
-        $this->user(Role::CAISSIER, 'autre@example.com');
-
-        $this->sell($cashier, 1200, ['price_authorization' => ['email' => 'chef@example.com', 'password' => 'faux']])
-            ->assertStatus(422)->assertJsonValidationErrors('price_authorization');
-        // Another cashier is not a manager.
-        $this->sell($cashier, 1200, ['price_authorization' => ['email' => 'autre@example.com', 'password' => 'secret123']])
-            ->assertStatus(422)->assertJsonValidationErrors('price_authorization');
-        $this->assertSame(50, $this->batch->fresh()->quantity_available);
-    }
-
-    public function test_a_manager_selling_confirms_it_themself(): void
-    {
-        $manager = $this->user(Role::ADMIN_BOUTIQUE, 'chef@example.com');
-
-        $id = $this->sell($manager, 1200, ['confirm_below_min' => true])->assertCreated()->json('id');
-        $this->assertSame($manager->id, Sale::findOrFail($id)->price_authorized_by);
     }
 
     public function test_products_carry_a_barcode_and_a_usual_price(): void

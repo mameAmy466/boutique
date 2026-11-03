@@ -214,7 +214,6 @@ export interface SaleItem {
   cost_price: string;
   min_price: string;
   unit_price: string;
-  below_min_price?: boolean;
   line_total: string;
   product_batch?: ProductBatch;
 }
@@ -248,7 +247,6 @@ export interface Sale {
   items?: SaleItem[];
   invoice?: Invoice | null;
   user?: User;
-  price_authorizer?: Pick<User, 'id' | 'name'> | null;
   cancelled_by_user?: Pick<User, 'id' | 'name'> | null;
 }
 

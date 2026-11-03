@@ -18,7 +18,6 @@ class SaleItem extends Model
         'cost_price',
         'min_price',
         'unit_price',
-        'below_min_price',
         'line_total',
     ];
 
@@ -29,7 +28,6 @@ class SaleItem extends Model
             'min_price' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'line_total' => 'decimal:2',
-            'below_min_price' => 'boolean',
         ];
     }
 
